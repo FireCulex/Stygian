@@ -952,10 +952,22 @@ idClip::GetTraceClipModels
   cm->owner == passOwner ( don't interact with other missiles from same owner )
 ====================
 */
+// Linux port fix (B2): degenerate (NaN / huge) bounds make ClipModelsTouchingBounds
+// visit every sector — NaN comparisons are always false, so both branches are taken
+// at every node and the whole clip-model list gets touched (~1s per query).
+static ID_INLINE bool ClipBoundsDegenerate( const idBounds &b ) {
+	return !( b[0][0] <= b[1][0] && b[0][1] <= b[1][1] && b[0][2] <= b[1][2] ) ||
+		idMath::Fabs( b[0][0] ) > 1e30f || idMath::Fabs( b[0][1] ) > 1e30f || idMath::Fabs( b[0][2] ) > 1e30f;
+}
+
 int idClip::GetTraceClipModels( const idBounds &bounds, int contentMask, const idEntity *passEntity, idClipModel **clipModelList ) const {
 	int i, num;
 	idClipModel	*cm;
 	idEntity *passOwner;
+
+	if ( ClipBoundsDegenerate( bounds ) ) {
+		return 0;
+	}
 
 	num = ClipModelsTouchingBounds( bounds, contentMask, clipModelList, MAX_GENTITIES );
 

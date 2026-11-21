@@ -5557,6 +5557,28 @@ void idPhysics_AF::CheckForCollisions( float timeStep ) {
 	for ( i = 0; i < bodies.Num(); i++ ) {
 		body = bodies[i];
 
+		// Linux port fix (B2): skip bodies whose simulated transform went non-finite.
+		// clip.Motion with a NaN origin makes the clip trace walk the whole BSP tree
+		// (~1s per body, game thread stalls). Link at the last finite origin instead.
+		{
+			const idVec3 &o = body->current->worldOrigin;
+			const idVec3 &n = body->next->worldOrigin;
+			bool finite = ( o.x == o.x ) && ( o.y == o.y ) && ( o.z == o.z ) &&
+				( n.x == n.x ) && ( n.y == n.y ) && ( n.z == n.z ) &&
+				idMath::Fabs( o.x ) < 1e30f && idMath::Fabs( o.y ) < 1e30f && idMath::Fabs( o.z ) < 1e30f &&
+				idMath::Fabs( n.x ) < 1e30f && idMath::Fabs( n.y ) < 1e30f && idMath::Fabs( n.z ) < 1e30f;
+			if ( !finite ) {
+				if ( idLib::frameNumber % 120 == 0 ) {
+					gameLocal.Printf( "AF-NAN %s body %d non-finite origin frame %d\n",
+						self ? self->name.c_str() : "?", i, idLib::frameNumber );
+				}
+				if ( o.x == o.x && o.y == o.y && o.z == o.z ) {
+					body->clipModel->Link( gameLocal.clip, self, body->clipModel->GetId(), o, body->current->worldAxis );
+				}
+				continue;
+			}
+		}
+
 		if ( body->clipMask != 0 ) {
 
 			passEntity = SetupCollisionForBody( body );

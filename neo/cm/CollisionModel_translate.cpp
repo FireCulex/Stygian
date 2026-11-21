@@ -758,6 +758,19 @@ void idCollisionModelManagerLocal::Translation( trace_t *results, const idVec3 &
 		return;
 	}
 
+	// Linux port fix (B2): non-finite start/end makes the axial BSP recursion visit
+	// both children at every node (NaN comparisons are always false), walking the whole
+	// tree and costing ~1s per query. Bail out as "no hit" instead.
+	if ( !( start[0] == start[0] ) || !( start[1] == start[1] ) || !( start[2] == start[2] ) ||
+		 !( end[0] == end[0] ) || !( end[1] == end[1] ) || !( end[2] == end[2] ) ||
+		 idMath::Fabs( start[0] ) > 1e30f || idMath::Fabs( start[1] ) > 1e30f || idMath::Fabs( start[2] ) > 1e30f ||
+		 idMath::Fabs( end[0] ) > 1e30f || idMath::Fabs( end[1] ) > 1e30f || idMath::Fabs( end[2] ) > 1e30f ) {
+		results->fraction = 1.0f;
+		results->endpos = end;
+		results->endAxis = trmAxis;
+		return;
+	}
+
 	// if case special position test
 	if ( start[0] == end[0] && start[1] == end[1] && start[2] == end[2] ) {
 		idCollisionModelManagerLocal::ContentsTrm( results, start, trm, trmAxis, contentMask, model, modelOrigin, modelAxis );

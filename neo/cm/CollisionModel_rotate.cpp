@@ -1275,6 +1275,15 @@ void idCollisionModelManagerLocal::Rotation180( trace_t *results, const idVec3 &
 		return;
 	}
 
+	// Linux port fix (B2): non-finite start would walk the whole BSP tree — bail as "no hit".
+	if ( !( start[0] == start[0] ) || !( start[1] == start[1] ) || !( start[2] == start[2] ) ||
+		 idMath::Fabs( start[0] ) > 1e30f || idMath::Fabs( start[1] ) > 1e30f || idMath::Fabs( start[2] ) > 1e30f ) {
+		results->fraction = 1.0f;
+		results->endpos = start;
+		results->endAxis = trmAxis;
+		return;
+	}
+
 	idCollisionModelManagerLocal::checkCount++;
 
 	tw.trace.fraction = 1.0f;
