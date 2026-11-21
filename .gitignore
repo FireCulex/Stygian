@@ -1,0 +1,3 @@
+# Build artifacts (do not commit — the 100 MB exe and objects live here)
+neo/build_linux/
+neo/build_mingw/
