@@ -32,6 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "Common_local.h"
 #include "../renderer/Image.h"
 #include "../renderer/ImageOpts.h"
+#include "../sys/sdl/mcp_server.h"
 
 /*
 
@@ -375,6 +376,10 @@ void idCommonLocal::Frame() {
 
 		// This is the only place this is incremented
 		idLib::frameNumber++;
+
+		// service the built-in MCP server (starts/stops it from cvars and
+		// runs queued tool calls on this, the main thread)
+		mcp::PumpFrame();
 
 		// allow changing SIMD usage on the fly
 		if ( com_forceGenericSIMD.IsModified() ) {

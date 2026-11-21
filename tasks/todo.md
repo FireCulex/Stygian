@@ -156,6 +156,16 @@ Get a native Linux build of Doom 3 BFG (single-player only) running the campaign
   - `docs/linux-shadowmap-testing.md` — `r_useShadowMaps`, `r_shadowMapResolution`, `r_shadowMapPCFSamples`, `r_shadowMapBiasConstant`, `r_shadowMapBiasSlope`, `r_shadowMapDebug`.
   - Dependencies: Task 10
 
+### Tooling: built-in MCP server (Linux, in-process)
+
+- [x] **Task 14: Built-in MCP server inside the game binary** ✅ 2026-11-21
+  - `neo/sys/sdl/mcp_server.{h,cpp}` + `mcp_json.h`: Streamable-HTTP JSON-RPC 2.0 on `127.0.0.1:8787` (cvars `mcp_enable`, `mcp_port`, `mcp_maxLogLines`).
+  - Tools: `console_log`, `player_state`, `render_stats` (draw surfs / lights / view entities / materials, frontend+backend counters, timings).
+  - Threading: server on its own thread; tool calls deferred to the main thread via `mcp::PumpFrame()` in `idCommonLocal::Frame()`; view snapshot from `R_AddDrawViewCmd`; console capture via `SDL_Log` hook.
+  - Docs: `docs/mcp-server.md` (endpoints, curl examples, OpenCode `"mcp"` config snippet).
+  - Verified on `:99` with `+map game/mars_city2`: initialize / tools/list / all three tools / unknown-tool error / 202 notification all correct; player position, 233 draw surfs, 22 lights, 72 view entities, materials + md5/lwo model names, live console tail.
+  - Note: adding a new `sys/sdl/*.cpp` requires re-running CMake configure (source glob), not just `cmake --build`.
+
 ---
 
 ## Checkpoints

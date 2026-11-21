@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #include "../idlib/precompiled.h"
 
 #include "tr_local.h"
+#include "../sys/sdl/mcp_server.h"
 
 idRenderSystemLocal	tr;
 idRenderSystem * renderSystem = &tr;
@@ -181,6 +182,11 @@ void	R_AddDrawViewCmd( viewDef_t *parms, bool guiOnly ) {
 	cmd->viewDef = parms;
 
 	tr.pc.c_numViews++;
+
+	// remember the last main (non-subview) view for the MCP render_stats tool
+	if ( !parms->isSubview ) {
+		mcp::SnapshotView( parms );
+	}
 
 	R_ViewStatistics( parms );
 }
