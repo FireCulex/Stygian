@@ -315,6 +315,10 @@ struct viewLight_t {
 	drawSurf_t *			globalInteractions;			// get shadows from everything
 	drawSurf_t *			translucentInteractions;	// translucent interactions don't get shadows
 
+	// Shadow map casters (when r_useShadowMaps is enabled)
+	// Chain of drawSurf_t for all surfaces that cast shadows into this light
+	drawSurf_t *			shadowCasters;
+
 	// R_AddSingleLight will build a chain of parameters here to setup shadow volumes
 	preLightShadowVolumeParms_t *	preLightShadowVolumes;
 };

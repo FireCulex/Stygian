@@ -167,7 +167,7 @@ idFont::LoadFont
 ==============================
 */
 bool idFont::LoadFont() {
-	idStr fontName = va( "newfonts/%s/48.dat", GetName() );
+	idStr fontName = va_format( "newfonts/%s/48.dat", GetName() );
 	idFile * fd = fileSystem->OpenFileRead( fontName );
 	if ( fd == NULL ) {
 		return false;
@@ -235,7 +235,7 @@ bool idFont::LoadFont() {
 	float scales[3] = { 4.0f, 2.0f, 1.0f };
 	for ( int i = 0; i < 3; i++ ) {
 		oldGlyphInfo_t oldGlyphInfo[GLYPHS_PER_FONT];
-		const char * oldFileName = va( "newfonts/%s/old_%d.dat", GetName(), pointSizes[i] );
+		const char * oldFileName = va_format( "newfonts/%s/old_%d.dat", GetName(), pointSizes[i] );
 		if ( LoadOldGlyphData( oldFileName, oldGlyphInfo ) ) {
 			int mh = 0;
 			int mw = 0;

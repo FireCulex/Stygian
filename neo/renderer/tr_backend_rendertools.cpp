@@ -721,7 +721,7 @@ static void RB_ShowSilhouette() {
 					continue;
 				}
 
-				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer.GetAPIObject() );
+				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer.GetAPIObject() ) ) );
 				int vertOffset = vertexBuffer.GetOffset();
 
 				qglVertexPointer( 3, GL_FLOAT, sizeof( idShadowVert ), (void *)vertOffset );
@@ -906,7 +906,7 @@ static void RB_ShowViewEntitys( viewEntity_t *vModels ) {
 			R_LocalPointToGlobal( vModel->modelMatrix, edef->localReferenceBounds[1], corner );
 
 			tr.primaryWorld->DrawText( 
-				va( "%i:%s", edef->index, edef->parms.hModel->Name() ), 
+				va_format( "%i:%s", edef->index, edef->parms.hModel->Name() ), 
 				corner,
 				0.25f, color, 
 				tr.primaryView->renderView.viewaxis );
@@ -1229,13 +1229,13 @@ static void RB_ShowNormals( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 				const idVec3 normal = tri->verts[j].GetNormal();
 				const idVec3 tangent = tri->verts[j].GetTangent();
 				R_LocalPointToGlobal( drawSurf->space->modelMatrix, tri->verts[j].xyz + tangent + normal * 0.2f, pos );
-				RB_DrawText( va( "%d", j ), pos, 0.01f, colorWhite, backEnd.viewDef->renderView.viewaxis, 1 );
+				RB_DrawText( va_format( "%d", j ), pos, 0.01f, colorWhite, backEnd.viewDef->renderView.viewaxis, 1 );
 			}
 
 			for ( j = 0; j < tri->numIndexes; j += 3 ) {
 				const idVec3 normal = tri->verts[ tri->indexes[ j + 0 ] ].GetNormal();
 				R_LocalPointToGlobal( drawSurf->space->modelMatrix, ( tri->verts[ tri->indexes[ j + 0 ] ].xyz + tri->verts[ tri->indexes[ j + 1 ] ].xyz + tri->verts[ tri->indexes[ j + 2 ] ].xyz ) * ( 1.0f / 3.0f ) + normal * 0.2f, pos );
-				RB_DrawText( va( "%d", j / 3 ), pos, 0.01f, colorCyan, backEnd.viewDef->renderView.viewaxis, 1 );
+				RB_DrawText( va_format( "%d", j / 3 ), pos, 0.01f, colorCyan, backEnd.viewDef->renderView.viewaxis, 1 );
 			}
 		}
 	}

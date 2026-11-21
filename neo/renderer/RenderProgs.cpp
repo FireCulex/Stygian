@@ -98,6 +98,16 @@ void idRenderProgManager::Init() {
 		{ BUILTIN_SHADOW_DEBUG, "shadowDebug.vfp" },
 		{ BUILTIN_SHADOW_DEBUG_SKINNED, "shadowDebug_skinned.vfp" },
 
+		{ BUILTIN_SHADOW_OMNI, "shadow_omni.vfp" },
+		{ BUILTIN_SHADOW_OMNI_SKINNED, "shadow_omni_skinned.vfp" },
+		{ BUILTIN_SHADOW_PROJECTED, "shadow_projected.vfp" },
+		{ BUILTIN_SHADOW_PROJECTED_SKINNED, "shadow_projected_skinned.vfp" },
+		{ BUILTIN_SHADOW_DIRECTIONAL, "shadow_directional.vfp" },
+		{ BUILTIN_SHADOW_DIRECTIONAL_SKINNED, "shadow_directional_skinned.vfp" },
+
+		{ BUILTIN_INTERACTION_SHADOWMAP, "interaction_shadowmap.vfp" },
+		{ BUILTIN_INTERACTION_SHADOWMAP_SKINNED, "interaction_shadowmap_skinned.vfp" },
+
 		{ BUILTIN_BLENDLIGHT, "blendlight.vfp" },
 		{ BUILTIN_FOG, "fog.vfp" },
 		{ BUILTIN_FOG_SKINNED, "fog_skinned.vfp" },
@@ -143,6 +153,10 @@ void idRenderProgManager::Init() {
 	vertexShaders[builtinShaders[BUILTIN_DEPTH_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADOW_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_SHADOW_DEBUG_SKINNED]].usesJoints = true;
+	vertexShaders[builtinShaders[BUILTIN_SHADOW_OMNI_SKINNED]].usesJoints = true;
+	vertexShaders[builtinShaders[BUILTIN_SHADOW_PROJECTED_SKINNED]].usesJoints = true;
+	vertexShaders[builtinShaders[BUILTIN_SHADOW_DIRECTIONAL_SKINNED]].usesJoints = true;
+	vertexShaders[builtinShaders[BUILTIN_INTERACTION_SHADOWMAP_SKINNED]].usesJoints = true;
 	vertexShaders[builtinShaders[BUILTIN_FOG_SKINNED]].usesJoints = true;
 
 	cmdSystem->AddCommand( "reloadShaders", R_ReloadShaders, CMD_FL_RENDERER, "reloads shaders" );

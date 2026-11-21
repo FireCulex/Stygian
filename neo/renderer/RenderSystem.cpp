@@ -651,7 +651,7 @@ void idRenderSystemLocal::SwapCommandBuffers_FinishRendering(
 
 	// read back the start and end timer queries from the previous frame
 	if ( glConfig.timerQueryAvailable ) {
-		uint64 drawingTimeNanoseconds = 0;
+		GLuint64 drawingTimeNanoseconds = 0;
 		if ( tr.timerQueryId != 0 ) {
 			qglGetQueryObjectui64vEXT( tr.timerQueryId, GL_QUERY_RESULT, &drawingTimeNanoseconds );
 		}

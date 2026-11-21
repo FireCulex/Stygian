@@ -788,7 +788,11 @@ static drawSurf_t * R_ParticleDeform( drawSurf_t *surf, bool useArea ) {
 	const idJointMat * joints = ( ( srcTri->staticModelWithJoints != NULL ) && r_useGPUSkinning.GetBool() ) ? srcTri->staticModelWithJoints->jointsInverted : NULL;
 
 	if ( useArea ) {
+#if defined(ID_PC_WIN)
 		sourceTriAreas = (float *)_alloca( sizeof( *sourceTriAreas ) * numSourceTris );
+#else
+		sourceTriAreas = (float *)alloca( sizeof( *sourceTriAreas ) * numSourceTris );
+#endif
 		int	triNum = 0;
 		for ( int i = 0; i < srcTri->numIndexes; i += 3, triNum++ ) {
 			float area = idWinding::TriangleArea(	idDrawVert::GetSkinnedDrawVertPosition( srcTri->verts[ srcTri->indexes[ i+0 ] ], joints ),

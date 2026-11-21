@@ -95,7 +95,7 @@ public:
 	void		Indent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT );
 	void		Outdent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT );
 
-	void		Printf( VERIFY_FORMAT_STRING const char *fmt, ... );
+	void		Printf( const char *fmt, ... );
 
 	static const int		MAX_LOG_LEVELS = 20;
 
@@ -175,7 +175,7 @@ public:
 	void		Indent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT ) {}
 	void		Outdent( renderLogIndentLabel_t label = RENDER_LOG_INDENT_DEFAULT ) {}
 
-	void		Printf( VERIFY_FORMAT_STRING const char *fmt, ... ) {}
+	void		Printf( const char *fmt, ... ) {}
 
 	int			activeLevel;
 };

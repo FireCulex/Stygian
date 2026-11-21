@@ -219,7 +219,7 @@ void RB_StereoRenderExecuteBackEndCommands( const emptyCommand_t * const allCmds
 	static idImage * stereoRenderImages[2];
 	for ( int i = 0; i < 2; i++ ) {
 		if ( stereoRenderImages[i] == NULL ) {
-			stereoRenderImages[i] = globalImages->ImageFromFunction( va("_stereoRender%i",i), R_MakeStereoRenderImage );
+			stereoRenderImages[i] = globalImages->ImageFromFunction( va_format("_stereoRender%i",i), R_MakeStereoRenderImage );
 		}
 
 		// resize the stereo render image if the main window has changed size

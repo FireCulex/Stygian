@@ -30,9 +30,10 @@ If you have questions concerning this license or the applicable additional terms
 #include "../idlib/precompiled.h"
 
 #include "tr_local.h"
+#include "backend/RenderBackend.h"
 
 // Vista OpenGL wrapper check
-#include "../sys/win32/win_local.h"
+#include "../sys/sdl/sdl_public.h"
 
 // DeviceContext bypasses RenderSystem to work directly with this
 idGuiModel * tr_guiModel;
@@ -195,7 +196,7 @@ idCVar stereoRender_deGhost( "stereoRender_deGhost", "0.05", CVAR_FLOAT | CVAR_A
 
 // GL_ARB_multitexture
 PFNGLACTIVETEXTUREPROC					qglActiveTextureARB;
-PFNGLCLIENTACTIVETEXTUREPROC			qglClientActiveTextureARB;
+PFNGLCLIENTACTIVETEXTUREARBPROC			qglClientActiveTextureARB;
 
 // GL_EXT_direct_state_access
 PFNGLBINDMULTITEXTUREEXTPROC			qglBindMultiTextureEXT;
@@ -336,11 +337,22 @@ DebugCallback
 For ARB_debug_output
 ========================
 */
+
+#if defined(ID_PC_WIN)
+#define CALLBACK __stdcall
+#else
+#define CALLBACK
+#endif
+
 static void CALLBACK DebugCallback(unsigned int source, unsigned int type,
-								   unsigned int id, unsigned int severity, int length, const char * message, void * userParam) {
+								   unsigned int id, unsigned int severity, int length, const char * message, const void * userParam) {
 	// it probably isn't safe to do an idLib::Printf at this point
+#if defined(ID_PC_WIN)
 	OutputDebugString( message );
 	OutputDebugString( "\n" );
+#else
+	fprintf( stderr, "%s\n", message );
+#endif
 }
 
 /*
@@ -363,11 +375,18 @@ static void R_CheckPortableExtensions() {
 		glConfig.vendor = VENDOR_INTEL;
 	}
 
-	// GL_ARB_multitexture
-	glConfig.multitextureAvailable = R_CheckExtension( "GL_ARB_multitexture" );
+	// GL_ARB_multitexture (core since GL 1.3, the ARB-suffixed entry points
+	// may be absent from the extension string on core-profile drivers)
+	glConfig.multitextureAvailable = ( glConfig.glVersion >= 1.3f ) || R_CheckExtension( "GL_ARB_multitexture" );
 	if ( glConfig.multitextureAvailable ) {
-		qglActiveTextureARB = (void(APIENTRY *)(GLenum))GLimp_ExtensionPointer( "glActiveTextureARB" );
-		qglClientActiveTextureARB = (void(APIENTRY *)(GLenum))GLimp_ExtensionPointer( "glClientActiveTextureARB" );
+		qglActiveTextureARB = (PFNGLACTIVETEXTUREPROC)GLimp_ExtensionPointer( "glActiveTextureARB" );
+		qglClientActiveTextureARB = (PFNGLCLIENTACTIVETEXTUREARBPROC)GLimp_ExtensionPointer( "glClientActiveTextureARB" );
+		if ( qglActiveTextureARB == NULL ) {
+			qglActiveTextureARB = (PFNGLACTIVETEXTUREPROC)GLimp_ExtensionPointer( "glActiveTexture" );
+		}
+		if ( qglClientActiveTextureARB == NULL ) {
+			qglClientActiveTextureARB = (PFNGLCLIENTACTIVETEXTUREARBPROC)GLimp_ExtensionPointer( "glClientActiveTexture" );
+		}
 	}
 
 	// GL_EXT_direct_state_access
@@ -600,7 +619,8 @@ static void R_CheckPortableExtensions() {
 		idLib::Error( "GL_ARB_draw_elements_base_vertex not available" );
 	}
 	// GL_ARB_vertex_program / GL_ARB_fragment_program
-	if ( !glConfig.fragmentProgramAvailable ) {
+	// (legacy path; on core-profile drivers only the GLSL path is exposed)
+	if ( !glConfig.fragmentProgramAvailable && !glConfig.glslAvailable ) {
 		idLib::Error( "GL_ARB_fragment_program not available" );
 	}
 	// GLSL
@@ -841,24 +861,20 @@ void R_InitOpenGL() {
 	R_SetColorMappings();
 
 	static bool glCheck = false;
-	if ( !glCheck && win32.osversion.dwMajorVersion == 6 ) {
+	if ( !glCheck ) {
 		glCheck = true;
 		if ( !idStr::Icmp( glConfig.vendor_string, "Microsoft" ) && idStr::FindText( glConfig.renderer_string, "OpenGL-D3D" ) != -1 ) {
 			if ( cvarSystem->GetCVarBool( "r_fullscreen" ) ) {
 				cmdSystem->BufferCommandText( CMD_EXEC_NOW, "vid_restart partial windowed\n" );
-				Sys_GrabMouseCursor( false );
+				SDLPlatform::SetMouseGrab(false);
 			}
-			int ret = MessageBox( NULL, "Please install OpenGL drivers from your graphics hardware vendor to run " GAME_NAME ".\nYour OpenGL functionality is limited.",
-				"Insufficient OpenGL capabilities", MB_OKCANCEL | MB_ICONWARNING | MB_TASKMODAL );
-			if ( ret == IDCANCEL ) {
-				cmdSystem->BufferCommandText( CMD_EXEC_APPEND, "quit\n" );
-				cmdSystem->ExecuteCommandBuffer();
-			}
-			if ( cvarSystem->GetCVarBool( "r_fullscreen" ) ) {
-				cmdSystem->BufferCommandText( CMD_EXEC_APPEND, "vid_restart\n" );
-			}
+			SDLPlatform::ShowMessageBox("Insufficient OpenGL capabilities", "Please install OpenGL drivers from your graphics hardware vendor to run " GAME_NAME ".\nYour OpenGL functionality is limited.", true);
 		}
 	}
+
+	// Initialize the render backend (shadow map pool etc.) now that a GL
+	// context exists. Runs again after a full vid_restart.
+	RenderBackend_Init();
 }
 
 /*
@@ -1073,7 +1089,7 @@ void R_ReportSurfaceAreas_f( const idCmdArgs &args ) {
 		return;
 	}
 
-	list = (idMaterial **)_alloca( count * sizeof( *list ) );
+	list = (idMaterial **)alloca( count * sizeof( *list ) );
 
 	for ( i = 0 ; i < count ; i++ ) {
 		list[i] = (idMaterial *)declManager->DeclByIndex( DECL_MATERIAL, i, false );
@@ -1528,7 +1544,7 @@ void R_MakeAmbientMap_f( const idCmdArgs &args ) {
 	// resample with hemispherical blending
 	int	samples = 1000;
 
-	byte	*outBuffer = (byte *)_alloca( outSize * outSize * 4 );
+	byte	*outBuffer = (byte *)alloca( outSize * outSize * 4 );
 
 	for ( int map = 0 ; map < 2 ; map++ ) {
 		for ( i = 0 ; i < 6 ; i++ ) {
@@ -1652,13 +1668,12 @@ void GfxInfo_f( const idCmdArgs &args ) {
 
 	common->Printf( "-------\n" );
 
-	// WGL_EXT_swap_interval
-	typedef BOOL (WINAPI * PFNWGLSWAPINTERVALEXTPROC) (int interval);
-	extern	PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT;
-
-	if ( r_swapInterval.GetInteger() && wglSwapIntervalEXT != NULL ) {
+	// SDL_GL_SetSwapInterval for swap interval control
+	if ( r_swapInterval.GetInteger() ) {
+		SDL_GL_SetSwapInterval( r_swapInterval.GetInteger() );
 		common->Printf( "Forcing swapInterval %i\n", r_swapInterval.GetInteger() );
 	} else {
+		SDL_GL_SetSwapInterval( 0 );
 		common->Printf( "swapInterval not forced\n" );
 	}
 
@@ -1745,6 +1760,8 @@ void R_VidRestart_f( const idCmdArgs &args ) {
 		// free all of our texture numbers
 		Sys_ShutdownInput();
 		globalImages->PurgeAllImages();
+		// release backend GL resources before the context goes away
+		RenderBackend_Shutdown();
 		// free the context and close the window
 		GLimp_Shutdown();
 		r_initialized = false;
@@ -2372,6 +2389,7 @@ idRenderSystemLocal::ShutdownOpenGL
 void idRenderSystemLocal::ShutdownOpenGL() {
 	// free the context and close the window
 	R_ShutdownFrameData();
+	RenderBackend_Shutdown();
 	GLimp_Shutdown();
 	r_initialized = false;
 }

@@ -409,7 +409,11 @@ bool idRenderWorldLocal::PortalIsFoggedOut( const portal_t *p ) {
 	// find the current density of the fog
 	const idMaterial * lightShader = ldef->lightShader;
 	const int size = lightShader->GetNumRegisters() * sizeof( float );
+#if defined(ID_PC_WIN)
 	float * regs = (float *)_alloca( size );
+#else
+	float * regs = (float *)alloca( size );
+#endif
 
 	lightShader->EvaluateRegisters( regs, ldef->parms.shaderParms, 
 		tr.viewDef->renderView.shaderParms, tr.viewDef->renderView.time[0] * 0.001f, ldef->parms.referenceSound );

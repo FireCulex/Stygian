@@ -435,6 +435,12 @@
     <ClInclude Include="renderer\RenderProgs.h">
       <Filter>Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\backend\RenderBackend.h">
+      <Filter>Renderer\Backend</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer\backend\ShadowMaps.h">
+      <Filter>Renderer\Backend</Filter>
+    </ClInclude>
     <ClInclude Include="sys\sys_lobby.h">
       <Filter>Sys</Filter>
     </ClInclude>
@@ -778,6 +784,12 @@
     </ClCompile>
     <ClCompile Include="renderer\OpenGL\gl_backend.cpp">
       <Filter>Renderer\OpenGL</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\backend\RenderBackend.cpp">
+      <Filter>Renderer\Backend</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer\backend\ShadowMaps.cpp">
+      <Filter>Renderer\Backend</Filter>
     </ClCompile>
     <ClCompile Include="sys\win32\win_cpu.cpp">
       <Filter>Sys\Win32</Filter>

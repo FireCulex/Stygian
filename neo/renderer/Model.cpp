@@ -1079,7 +1079,11 @@ bool idRenderModelStatic::ConvertASEToModelSurfaces( const struct aseModel_s *as
 	// the modeling programs can save out multiple surfaces with a common
 	// material, but we would like to mege them together where possible
 	// meaning that this->NumSurfaces() <= ase->objects.currentElements
+#if defined(ID_PC_WIN)
 	mergeTo = (int *)_alloca( ase->objects.Num() * sizeof( *mergeTo ) ); 
+#else
+	mergeTo = (int *)alloca( ase->objects.Num() * sizeof( *mergeTo ) ); 
+#endif
 	surf.geometry = NULL;
 	if ( ase->materials.Num() == 0 ) {
 		// if we don't have any materials, dump everything into a single surface
@@ -1391,7 +1395,11 @@ bool idRenderModelStatic::ConvertLWOToModelSurfaces( const struct st_lwObject *l
 
 	// the modeling programs can save out multiple surfaces with a common
 	// material, but we would like to merge them together where possible
+#if defined(ID_PC_WIN)
 	mergeTo = (int *)_alloca( i * sizeof( mergeTo[0] ) ); 
+#else
+	mergeTo = (int *)alloca( i * sizeof( mergeTo[0] ) ); 
+#endif
 	memset( &surf, 0, sizeof( surf ) );
 
 	if ( !r_mergeModelSurfaces.GetBool() ) {
@@ -1912,7 +1920,11 @@ bool idRenderModelStatic::ConvertMAToModelSurfaces (const struct maModel_s *ma )
 	// the modeling programs can save out multiple surfaces with a common
 	// material, but we would like to mege them together where possible
 	// meaning that this->NumSurfaces() <= ma->objects.currentElements
+#if defined(ID_PC_WIN)
 	mergeTo = (int *)_alloca( ma->objects.Num() * sizeof( *mergeTo ) ); 
+#else
+	mergeTo = (int *)alloca( ma->objects.Num() * sizeof( *mergeTo ) ); 
+#endif
 
 	surf.geometry = NULL;
 	if ( ma->materials.Num() == 0 ) {

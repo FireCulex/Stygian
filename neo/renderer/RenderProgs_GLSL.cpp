@@ -497,7 +497,7 @@ struct typeConversion_t {
 };
 
 const char * vertexInsert = {
-	"#version 150\n"
+	"#version 140\n"
 	"#define PC\n"
 	"\n"
 	"float saturate( float v ) { return clamp( v, 0.0, 1.0 ); }\n"
@@ -509,7 +509,7 @@ const char * vertexInsert = {
 };
 
 const char * fragmentInsert = {
-	"#version 150\n"
+	"#version 140\n"
 	"#define PC\n"
 	"\n"
 	"void clip( float v ) { if ( v < 0.0 ) { discard; } }\n"
@@ -670,7 +670,7 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 				ParseInOutStruct( src, AT_VS_IN, varsIn );
 				program += "\n\n";
 				for ( int i = 0; i < varsIn.Num(); i++ ) {
-					if ( varsIn[i].declareInOut ) {
+					if ( varsIn[i].declareInOut && varsIn[i].nameGLSL.Cmpn( "gl_", 3 ) != 0 ) {
 						program += "in " + varsIn[i].type + " " + varsIn[i].nameGLSL + ";\n";
 					}
 				}
@@ -679,7 +679,7 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 				ParseInOutStruct( src, AT_VS_OUT, varsOut );
 				program += "\n";
 				for ( int i = 0; i < varsOut.Num(); i++ ) {
-					if ( varsOut[i].declareInOut ) {
+					if ( varsOut[i].declareInOut && varsOut[i].nameGLSL.Cmpn( "gl_", 3 ) != 0 ) {
 						program += "out " + varsOut[i].type + " " + varsOut[i].nameGLSL + ";\n";
 					}
 				}
@@ -688,7 +688,7 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 				ParseInOutStruct( src, AT_PS_IN, varsIn );
 				program += "\n\n";
 				for ( int i = 0; i < varsIn.Num(); i++ ) {
-					if ( varsIn[i].declareInOut ) {
+					if ( varsIn[i].declareInOut && varsIn[i].nameGLSL.Cmpn( "gl_", 3 ) != 0 ) {
 						program += "in " + varsIn[i].type + " " + varsIn[i].nameGLSL + ";\n";
 					}
 				}
@@ -702,7 +702,7 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 				ParseInOutStruct( src, AT_PS_OUT, varsOut );
 				program += "\n";
 				for ( int i = 0; i < varsOut.Num(); i++ ) {
-					if ( varsOut[i].declareInOut ) {
+					if ( varsOut[i].declareInOut && varsOut[i].nameGLSL.Cmpn( "gl_", 3 ) != 0 ) {
 						program += "out " + varsOut[i].type + " " + varsOut[i].nameGLSL + ";\n";
 					}
 				}
@@ -786,7 +786,7 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 			for ( int i = 0; i < uniformList.Num(); i++ ) {
 				if ( token == uniformList[i] ) {
 					program += ( token.linesCrossed > 0 ) ? newline : ( token.WhiteSpaceBeforeToken() > 0 ? " " : "" );
-					program += va( "%s[%d /* %s */]", uniformArrayName, i, uniformList[i].c_str() );
+					program += va_format( "%s[%d /* %s */]", uniformArrayName, i, uniformList[i].c_str() );
 					isUniform = true;
 					break;
 				}
@@ -881,7 +881,7 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 
 	if ( uniformList.Num() > 0 ) {
 		if ( r_useUniformArrays.GetBool() ) {
-			out += va( "\nuniform vec4 %s[%d];\n", uniformArrayName, uniformList.Num() );
+			out += va_format( "\nuniform vec4 %s[%d];\n", uniformArrayName, uniformList.Num() );
 		} else {
 			out += "\n";
 			for ( int i = 0; i < uniformList.Num(); i++ ) {
@@ -901,6 +901,58 @@ idStr ConvertCG2GLSL( const idStr & in, const char * name, bool isVertexProgram,
 	uniforms += "\n";
 
 	return out;
+}
+
+/*
+================================================================================================
+SanitizeGLSLForCompat
+
+Mesa rejects shaders that redeclare built-in gl_* variables (e.g. "out vec4 gl_Position;")
+and the shipped GLSL cache in the .resources files was generated with "#version 150" plus
+such redeclarations. At "#version 140" (compatibility model, pre-core-profile) the built-ins
+gl_Position / gl_FrontColor / gl_FragColor are predeclared, assignment-only use compiles, and
+VS/FS stages still link through the built-in varyings. So: force #version 140 and drop any
+in/out declaration whose identifier starts with "gl_".
+================================================================================================
+*/
+static void SanitizeGLSLForCompat( idStr & src ) {
+	src.Replace( "#version 150", "#version 140" );
+
+	idStr out;
+	out.ReAllocate( src.Length() + 64, false );
+
+	const char * p = src.c_str();
+	while ( *p ) {
+		const char * eol = strstr( p, "\n" );
+		const int lineLen = eol ? (int)( eol - p ) : (int)idStr::Length( p );
+
+		// does this line declare an in/out variable named gl_*?  ("in vec4 gl_Position;")
+		bool drop = false;
+		{
+			const char * q = p;
+			while ( *q == ' ' || *q == '\t' ) q++;
+			if ( idStr::Cmpn( q, "in ", 3 ) == 0 || idStr::Cmpn( q, "out ", 4 ) == 0 ) {
+				bool isIn = ( q[0] == 'i' );
+				q += isIn ? 3 : 4;
+				while ( *q == ' ' || *q == '\t' ) q++;
+				// skip type token
+				while ( *q && *q != ' ' && *q != '\t' && *q != ';' ) q++;
+				while ( *q == ' ' || *q == '\t' ) q++;
+				// q now at the identifier
+				if ( idStr::Cmpn( q, "gl_", 3 ) == 0 ) {
+					drop = true;
+				}
+			}
+		}
+
+		if ( !drop ) {
+			out.Append( p, lineLen );
+			out += '\n';
+		}
+		p = eol ? eol + 1 : p + lineLen;
+	}
+
+	src = out;
 }
 
 /*
@@ -938,6 +990,11 @@ GLuint idRenderProgManager::LoadGLSLShader( GLenum target, const char * name, id
 	ID_TIME_T hlslTimeStamp;
 	int hlslFileLength = fileSystem->ReadFile( inFile.c_str(), NULL, &hlslTimeStamp );
 
+	// NOTE: the shipped .resources files contain NO CG sources (renderprogs/*.vertex|*.pixel|
+	// global.inc are stripped; only *.vfp / cgb/*.cgb and the pre-converted glsl cache are
+	// embedded). When the CG source is absent hlslTimeStamp is FILE_NOT_FOUND_TIMESTAMP (-1),
+	// so the comparison below naturally falls back to the embedded glsl cache — do NOT force
+	// reconversion here, that path returns false and leaves every vertex shader unloaded.
 	ID_TIME_T glslTimeStamp;
 	int glslFileLength = fileSystem->ReadFile( outFileGLSL.c_str(), NULL, &glslTimeStamp );
 
@@ -985,6 +1042,11 @@ GLuint idRenderProgManager::LoadGLSLShader( GLenum target, const char * name, id
 			Mem_Free( fileBufferUniforms );
 		}
 	}
+
+	// Mesa rejects redeclarations of gl_* built-ins and we run a #version 140 compat context,
+	// so patch the source in memory no matter which path produced it (embedded cache or
+	// freshly converted CG). Without this every shader fails to compile on Mesa.
+	SanitizeGLSLForCompat( programGLSL );
 
 	// find the uniforms locations in either the vertex or fragment uniform array
 	if ( r_useUniformArrays.GetBool() ) {
@@ -1094,7 +1156,7 @@ idRenderProgManager::GetGLSLParmName
 const char* idRenderProgManager::GetGLSLParmName( int rp ) const {
 	if ( rp >= RENDERPARM_USER ) {
 		int userParmIndex = rp - RENDERPARM_USER;
-		return va("rpUser%d", userParmIndex );
+		return va_format("rpUser%d", userParmIndex );
 	}
 	assert( rp < RENDERPARM_TOTAL );
 	return GLSLParmNames[ rp ];
@@ -1169,6 +1231,14 @@ void idRenderProgManager::LoadGLSLProgram( const int programIndex, const int ver
 
 	GLuint vertexProgID = ( vertexShaderIndex != -1 ) ? vertexShaders[ vertexShaderIndex ].progId : INVALID_PROGID;
 	GLuint fragmentProgID = ( fragmentShaderIndex != -1 ) ? fragmentShaders[ fragmentShaderIndex ].progId : INVALID_PROGID;
+
+	// A shader whose source file was not found gets progId 0 (LoadGLSLShader returned false).
+	// Do NOT attach/link it — that would fail the link and idLib::Error out at startup.
+	// Mark the whole program unavailable instead; callers must check IsBuiltinProgramLoaded().
+	if ( ( vertexShaderIndex != -1 && vertexProgID == 0 ) || ( fragmentShaderIndex != -1 && fragmentProgID == 0 ) ) {
+		prog.progId = 0;
+		return;
+	}
 
 	const GLuint program = qglCreateProgram();
 	if ( program ) {
@@ -1268,7 +1338,7 @@ void idRenderProgManager::LoadGLSLProgram( const int programIndex, const int ver
 	// set the texture unit locations once for the render program. We only need to do this once since we only link the program once
 	qglUseProgram( program );
 	for ( int i = 0; i < MAX_PROG_TEXTURE_PARMS; ++i ) {
-		GLint loc = qglGetUniformLocation( program, va( "samp%d", i ) );
+		GLint loc = qglGetUniformLocation( program, va_format( "samp%d", i ) );
 		if ( loc != -1 ) {
 			qglUniform1i( loc, i );
 		}

@@ -30,6 +30,8 @@ If you have questions concerning this license or the applicable additional terms
 #include "../idlib/precompiled.h"
 
 #include "tr_local.h"
+#include "backend/ShadowMaps.h"
+#include "backend/RenderBackend.h"
 
 idCVar r_drawEyeColor( "r_drawEyeColor", "0", CVAR_RENDERER | CVAR_BOOL, "Draw a colored box, red = left eye, blue = right eye, grey = non-stereo" );
 idCVar r_motionBlur( "r_motionBlur", "0", CVAR_RENDERER | CVAR_INTEGER | CVAR_ARCHIVE, "1 - 5, log2 of the number of motion blur samples" );
@@ -176,20 +178,20 @@ void RB_DrawElementsWithCounters( const drawSurf_t *surf ) {
 		}
 		assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
 
-		const GLuint ubo = reinterpret_cast< GLuint >( jointBuffer.GetAPIObject() );
+		const GLuint ubo = static_cast< GLuint >( reinterpret_cast< uintptr_t >( jointBuffer.GetAPIObject() ) );
 		qglBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
 	}
 
 	renderProgManager.CommitUniforms();
 
-	if ( backEnd.glState.currentIndexBuffer != (GLuint)indexBuffer->GetAPIObject() || !r_useStateCaching.GetBool() ) {
-		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)indexBuffer->GetAPIObject() );
-		backEnd.glState.currentIndexBuffer = (GLuint)indexBuffer->GetAPIObject();
+	if ( backEnd.glState.currentIndexBuffer != static_cast< GLuint >( reinterpret_cast< uintptr_t >( indexBuffer->GetAPIObject() ) ) || !r_useStateCaching.GetBool() ) {
+		qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, static_cast< GLuint >( reinterpret_cast< uintptr_t >( indexBuffer->GetAPIObject() ) ) );
+		backEnd.glState.currentIndexBuffer = static_cast< GLuint >( reinterpret_cast< uintptr_t >( indexBuffer->GetAPIObject() ) );
 	}
 
-	if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_VERT ) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
-		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
-		backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+	if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_VERT ) || ( backEnd.glState.currentVertexBuffer != static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) ) ) || !r_useStateCaching.GetBool() ) {
+		qglBindBufferARB( GL_ARRAY_BUFFER_ARB, static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) ) );
+		backEnd.glState.currentVertexBuffer = static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) );
 
 		qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
 		qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
@@ -787,7 +789,11 @@ static void RB_FillDepthBufferFast( drawSurf_t **drawSurfs, int numDrawSurfs ) {
 		RB_FillDepthBufferGeneric( &drawSurfs[surfNum], 1 );
 	}
 
+	#if defined(ID_PC_WIN)
 	const drawSurf_t ** perforatedSurfaces = (const drawSurf_t ** )_alloca( numDrawSurfs * sizeof( drawSurf_t * ) );
+#else
+	const drawSurf_t ** perforatedSurfaces = (const drawSurf_t ** )alloca( numDrawSurfs * sizeof( drawSurf_t * ) );
+#endif
 	int numPerforatedSurfaces = 0;
 
 	// draw all the opaque surfaces and build up a list of perforated surfaces that
@@ -860,6 +866,11 @@ const int INTERACTION_TEXUNIT_FALLOFF		= 1;
 const int INTERACTION_TEXUNIT_PROJECTION	= 2;
 const int INTERACTION_TEXUNIT_DIFFUSE		= 3;
 const int INTERACTION_TEXUNIT_SPECULAR		= 4;
+
+// Shadow map texture units (for r_useShadowMaps)
+const int INTERACTION_TEXUNIT_SHADOW_2D		= 5;  // Projected/spot shadow map
+const int INTERACTION_TEXUNIT_SHADOW_CUBE	= 6;  // Omni cubemap shadow map
+const int INTERACTION_TEXUNIT_SHADOW_CASCADE = 7; // Directional cascade shadow map
 
 /*
 ==================
@@ -1123,8 +1134,66 @@ static void RB_RenderInteractions( const drawSurf_t *surfList, const viewLight_t
 		// even if the space does not change between light stages, each light stage may need a different lightTextureMatrix baked in
 		backEnd.currentSpace = NULL;
 
+		// Shadow map setup for this light — constant across all surfaces of this light
+		// stage. The depth texture is bound on the shadow texture units and the shadow
+		// parameters are uploaded as user render parms c128-c134.
+		bool useShadowMaps = false;
+		const ShadowMaps::LightShadowRef* lightShadowRef = NULL;
+		if ( r_useShadowMaps.GetBool() && vLight->lightDef && vLight->lightDef->LightCastsShadows() ) {
+			lightShadowRef = ShadowMaps::GetLightShadowRef( vLight->lightDef->index );
+			useShadowMaps = lightShadowRef && lightShadowRef->valid;
+		}
+		if ( useShadowMaps ) {
+			const ShadowMaps::ShadowMapSlot& slot = ShadowMaps::GetPool()[ lightShadowRef->poolSlot ];
+			const ShadowMaps::Config& smConfig = ShadowMaps::GetConfig();
+
+			// Bind the pool depth texture on the shadow texture units
+			if ( lightShadowRef->type == ShadowMaps::SM_OMNI_CUBEMAP ) {
+				GL_SelectTexture( INTERACTION_TEXUNIT_SHADOW_CUBE );
+				qglBindTexture( GL_TEXTURE_CUBE_MAP, slot.depthTexture );
+			} else if ( lightShadowRef->type == ShadowMaps::SM_PROJECTED_2D ) {
+				GL_SelectTexture( INTERACTION_TEXUNIT_SHADOW_2D );
+				qglBindTexture( GL_TEXTURE_2D, slot.depthTexture );
+			} else if ( lightShadowRef->type == ShadowMaps::SM_DIRECTIONAL_CASCADE ) {
+				GL_SelectTexture( INTERACTION_TEXUNIT_SHADOW_CASCADE );
+				qglBindTexture( GL_TEXTURE_2D_ARRAY, slot.depthTexture );
+			}
+
+			// c128 = rpUser0: { shadowType, pcfSamples, biasConst, biasSlope }
+			float shadowParams[4] = {
+				(float)lightShadowRef->type,
+				(float)smConfig.pcfSamples,
+				smConfig.biasConstant,
+				smConfig.biasSlope
+			};
+			SetVertexParm( (renderParm_t)( RENDERPARM_USER + 0 ), shadowParams );
+
+			// c129 = rpUser1: x = shadow map texel size (1/resolution), y..w = cascade splits
+			float shadowMisc[4];
+			shadowMisc[0] = 1.0f / (float)Max( lightShadowRef->resolution, 1 );
+			shadowMisc[1] = slot.splitDepths[0];
+			shadowMisc[2] = slot.splitDepths[1];
+			shadowMisc[3] = slot.splitDepths[2];
+			SetVertexParm( (renderParm_t)( RENDERPARM_USER + 1 ), shadowMisc );
+
+			// c130 = rpUser2: world-space light origin + radius
+			const float lightRadius = Max( Max( idMath::Fabs( vLight->lightDef->parms.lightRadius.x ),
+												idMath::Fabs( vLight->lightDef->parms.lightRadius.y ) ),
+										  idMath::Fabs( vLight->lightDef->parms.lightRadius.z ) );
+			float lightOriginW[4] = { vLight->globalLightOrigin.x, vLight->globalLightOrigin.y,
+									  vLight->globalLightOrigin.z, lightRadius };
+			SetVertexParm( (renderParm_t)( RENDERPARM_USER + 2 ), lightOriginW );
+
+			// c131-c134 = rpUser3..6: shadow view-projection rows (world -> light clip),
+			// used by projected lights. The vertex shader transforms worldPos by these.
+			if ( lightShadowRef->type == ShadowMaps::SM_PROJECTED_2D ) {
+				SetVertexParms( (renderParm_t)( RENDERPARM_USER + 3 ), lightShadowRef->viewProjections[0][0], 4 );
+			}
+		}
+
 		for ( int sortedSurfNum = 0; sortedSurfNum < allSurfaces.Num(); sortedSurfNum++ ) {
 			const drawSurf_t * const surf = allSurfaces[ sortedSurfNum ];
+
 
 			// select the render prog
 			if ( lightShader->IsAmbientLight() ) {
@@ -1132,6 +1201,20 @@ static void RB_RenderInteractions( const drawSurf_t *surfList, const viewLight_t
 					renderProgManager.BindShader_InteractionAmbientSkinned();
 				} else {
 					renderProgManager.BindShader_InteractionAmbient();
+				}
+			} else if ( useShadowMaps && lightShadowRef ) {
+				// Use shadow map shader
+				if ( surf->jointCache ) {
+					renderProgManager.BindShader_InteractionShadowMapSkinned();
+				} else {
+					renderProgManager.BindShader_InteractionShadowMap();
+				}
+
+				// Bind shadow map texture(s) and set uniforms
+				// Note: We do this per-space change, but for simplicity do it per-surface
+				// since the shadow data is per-light, not per-surface
+				if ( surf->space != backEnd.currentSpace ) {
+					// Will be set in the space change block below
 				}
 			} else {
 				if ( surf->jointCache ) {
@@ -1194,6 +1277,13 @@ static void RB_RenderInteractions( const drawSurf_t *surfList, const viewLight_t
 				SetVertexParm( RENDERPARM_LIGHTPROJECTION_T, lightProjection[1].ToFloatPtr() );
 				SetVertexParm( RENDERPARM_LIGHTPROJECTION_Q, lightProjection[2].ToFloatPtr() );
 				SetVertexParm( RENDERPARM_LIGHTFALLOFF_S, lightProjection[3].ToFloatPtr() );
+
+				// set the model matrix (transposed, same convention as the GUI path) so
+				// shaders can reconstruct the world-space position (used by the
+				// interaction_shadowmap shaders for shadow lookups)
+				float modelMatrixTranspose[16];
+				R_MatrixTranspose( surf->space->modelMatrix, modelMatrixTranspose );
+				SetVertexParms( RENDERPARM_MODELMATRIX_X, modelMatrixTranspose, 4 );
 			}
 
 			// check for the fast path
@@ -1498,9 +1588,9 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 		RENDERLOG_PRINTF( "Binding Buffers: %p %p\n", vertexBuffer, indexBuffer );
 
 
-		if ( backEnd.glState.currentIndexBuffer != (GLuint)indexBuffer->GetAPIObject() || !r_useStateCaching.GetBool() ) {
-			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, (GLuint)indexBuffer->GetAPIObject() );
-			backEnd.glState.currentIndexBuffer = (GLuint)indexBuffer->GetAPIObject();
+		if ( backEnd.glState.currentIndexBuffer != static_cast< GLuint >( reinterpret_cast< uintptr_t >( indexBuffer->GetAPIObject() ) ) || !r_useStateCaching.GetBool() ) {
+			qglBindBufferARB( GL_ELEMENT_ARRAY_BUFFER_ARB, static_cast< GLuint >( reinterpret_cast< uintptr_t >( indexBuffer->GetAPIObject() ) ) );
+			backEnd.glState.currentIndexBuffer = static_cast< GLuint >( reinterpret_cast< uintptr_t >( indexBuffer->GetAPIObject() ) );
 		}
 
 		if ( drawSurf->jointCache ) {
@@ -1513,12 +1603,12 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 			}
 			assert( ( jointBuffer.GetOffset() & ( glConfig.uniformBufferOffsetAlignment - 1 ) ) == 0 );
 
-			const GLuint ubo = reinterpret_cast< GLuint >( jointBuffer.GetAPIObject() );
+			const GLuint ubo = static_cast< GLuint >( reinterpret_cast< uintptr_t >( jointBuffer.GetAPIObject() ) );
 			qglBindBufferRange( GL_UNIFORM_BUFFER, 0, ubo, jointBuffer.GetOffset(), jointBuffer.GetNumJoints() * sizeof( idJointMat ) );
 
-			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
-				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
-				backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT_SKINNED) || ( backEnd.glState.currentVertexBuffer != static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) ) ) || !r_useStateCaching.GetBool() ) {
+				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) ) );
+				backEnd.glState.currentVertexBuffer = static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) );
 
 				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
 				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
@@ -1536,9 +1626,9 @@ static void RB_StencilShadowPass( const drawSurf_t *drawSurfs, const viewLight_t
 
 		} else {
 
-			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT ) || ( backEnd.glState.currentVertexBuffer != (GLuint)vertexBuffer->GetAPIObject() ) || !r_useStateCaching.GetBool() ) {
-				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, (GLuint)vertexBuffer->GetAPIObject() );
-				backEnd.glState.currentVertexBuffer = (GLuint)vertexBuffer->GetAPIObject();
+			if ( ( backEnd.glState.vertexLayout != LAYOUT_DRAW_SHADOW_VERT ) || ( backEnd.glState.currentVertexBuffer != static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) ) ) || !r_useStateCaching.GetBool() ) {
+				qglBindBufferARB( GL_ARRAY_BUFFER_ARB, static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) ) );
+				backEnd.glState.currentVertexBuffer = static_cast< GLuint >( reinterpret_cast< uintptr_t >( vertexBuffer->GetAPIObject() ) );
 
 				qglEnableVertexAttribArrayARB( PC_ATTRIB_INDEX_VERTEX );
 				qglDisableVertexAttribArrayARB( PC_ATTRIB_INDEX_NORMAL );
@@ -2548,6 +2638,14 @@ void RB_DrawViewInternal( const viewDef_t * viewDef, const int stereoEye ) {
 	// fill the depth buffer and clear color buffer to black except on subviews
 	//-------------------------------------------------
 	RB_FillDepthBufferFast( drawSurfs, numDrawSurfs );
+
+	//-------------------------------------------------
+	// shadow map pass: assign pool slots and render shadow maps for this
+	// view's lights before the interaction pass samples them (3D views only)
+	//-------------------------------------------------
+	if ( viewDef->viewEntitys != NULL ) {
+		RenderBackend_ExecuteView( (viewDef_t *)viewDef );
+	}
 
 	//-------------------------------------------------
 	// main light renderer

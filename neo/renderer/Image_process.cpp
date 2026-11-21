@@ -217,7 +217,11 @@ byte *R_MipMapWithAlphaSpecularity( const byte *in, int width, int height ) {
 
 	// convert the incoming texture to centered floating point
 	c = width * height;
+#if defined(ID_PC_WIN)
 	fbuf = (float *)_alloca( c * 4 * sizeof( *fbuf ) );
+#else
+	fbuf = (float *)alloca( c * 4 * sizeof( *fbuf ) );
+#endif
 	in_p = in;
 	fbuf_p = fbuf;
 	for ( i = 0 ; i < c ; i++, in_p+=4, fbuf_p += 4 ) {

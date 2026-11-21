@@ -169,6 +169,16 @@ public:
 	void	BindShader_ShadowDebug() { BindShader_Builtin( BUILTIN_SHADOW_DEBUG ); }
 	void	BindShader_ShadowDebugSkinned() { BindShader_Builtin( BUILTIN_SHADOW_DEBUG_SKINNED ); }
 
+	void	BindShader_ShadowOmni() { BindShader_Builtin( BUILTIN_SHADOW_OMNI ); }
+	void	BindShader_ShadowOmniSkinned() { BindShader_Builtin( BUILTIN_SHADOW_OMNI_SKINNED ); }
+	void	BindShader_ShadowProjected() { BindShader_Builtin( BUILTIN_SHADOW_PROJECTED ); }
+	void	BindShader_ShadowProjectedSkinned() { BindShader_Builtin( BUILTIN_SHADOW_PROJECTED_SKINNED ); }
+	void	BindShader_ShadowDirectional() { BindShader_Builtin( BUILTIN_SHADOW_DIRECTIONAL ); }
+	void	BindShader_ShadowDirectionalSkinned() { BindShader_Builtin( BUILTIN_SHADOW_DIRECTIONAL_SKINNED ); }
+
+	void	BindShader_InteractionShadowMap() { BindShader_Builtin( BUILTIN_INTERACTION_SHADOWMAP ); }
+	void	BindShader_InteractionShadowMapSkinned() { BindShader_Builtin( BUILTIN_INTERACTION_SHADOWMAP_SKINNED ); }
+
 	void	BindShader_BlendLight() { BindShader_Builtin( BUILTIN_BLENDLIGHT ); }
 	void	BindShader_Fog() { BindShader_Builtin( BUILTIN_FOG ); }
 	void	BindShader_FogSkinned() { BindShader_Builtin( BUILTIN_FOG_SKINNED ); }
@@ -194,6 +204,25 @@ public:
 	// this should only be called via the reload shader console command
 	void	LoadAllShaders();
 	void	KillAllShaders();
+
+	// true if the given BUILTIN_* program actually linked (its source files were found).
+	// Programs whose files are absent are marked progId == 0 and must not be bound.
+	bool	IsBuiltinProgramLoaded( int i ) const {
+		if ( i < 0 || i >= MAX_BUILTINS ) { return false; }
+		const int p = builtinShaders[i];
+		if ( p < 0 || p >= glslPrograms.Num() ) { return false; }
+		const GLuint id = glslPrograms[p].progId;
+		return id != 0 && id != INVALID_PROGID;
+	}
+
+	// true if the shadow-map builtin programs (engine additions whose source files may be
+	// absent from stock assets) all linked — otherwise the shadow-map path must stay off.
+	bool	ShadowMapProgramsLoaded() const {
+		return IsBuiltinProgramLoaded( BUILTIN_INTERACTION_SHADOWMAP )
+			&& IsBuiltinProgramLoaded( BUILTIN_INTERACTION_SHADOWMAP_SKINNED )
+			&& IsBuiltinProgramLoaded( BUILTIN_SHADOW_OMNI )
+			&& IsBuiltinProgramLoaded( BUILTIN_SHADOW_PROJECTED );
+	}
 
 	static const int	MAX_GLSL_USER_PARMS = 8;
 	const char*	GetGLSLParmName( int rp ) const;
@@ -230,6 +259,16 @@ protected:
 		BUILTIN_SHADOW_SKINNED,
 		BUILTIN_SHADOW_DEBUG,
 		BUILTIN_SHADOW_DEBUG_SKINNED,
+
+		BUILTIN_SHADOW_OMNI,
+		BUILTIN_SHADOW_OMNI_SKINNED,
+		BUILTIN_SHADOW_PROJECTED,
+		BUILTIN_SHADOW_PROJECTED_SKINNED,
+		BUILTIN_SHADOW_DIRECTIONAL,
+		BUILTIN_SHADOW_DIRECTIONAL_SKINNED,
+
+		BUILTIN_INTERACTION_SHADOWMAP,
+		BUILTIN_INTERACTION_SHADOWMAP_SKINNED,
 
 		BUILTIN_BLENDLIGHT,
 		BUILTIN_FOG,

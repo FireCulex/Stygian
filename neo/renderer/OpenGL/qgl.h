@@ -33,7 +33,12 @@ If you have questions concerning this license or the applicable additional terms
 #define __QGL_H__
 
 
-#include <gl/gl.h>
+// Define GL_GLEXT_PROTOTYPES before including GL/gl.h so system glext.h emits prototypes
+#define GL_GLEXT_PROTOTYPES
+#include <GL/gl.h>
+
+// Also include local glext.h for any additional extensions
+#include "renderer/OpenGL/glext.h"
 
 
 #ifndef APIENTRY
@@ -41,14 +46,6 @@ If you have questions concerning this license or the applicable additional terms
 #endif
 #ifndef WINAPI
 #define WINAPI
-#endif
-
-// only use local glext.h if we are not using the system one already
-// http://oss.sgi.com/projects/ogl-sample/ABI/
-#ifndef GL_GLEXT_VERSION
-
-#include "glext.h"
-
 #endif
 
 typedef void (*GLExtension_t)(void);

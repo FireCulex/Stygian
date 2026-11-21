@@ -966,7 +966,7 @@ void idRenderWorldLocal::AddWorldModelEntities() {
 		def->index = index;
 		def->world = this;
 
-		def->parms.hModel = renderModelManager->FindModel( va("_area%i", i ) );
+		def->parms.hModel = renderModelManager->FindModel( va_format("_area%i", i ) );
 		if ( def->parms.hModel->IsDefaultModel() || !def->parms.hModel->IsStaticWorldModel() ) {
 			common->Error( "idRenderWorldLocal::InitFromMap: bad area model lookup" );
 		}

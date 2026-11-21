@@ -482,6 +482,12 @@ public:
 						// NULL unless an image is explicitly specified in the shader with "lightFalloffShader <image>"
 	idImage	*			LightFalloffImage() const { return lightFalloffImage; }
 
+						// returns true if this is a parallel (directional) light projection
+	bool				IsParallelLight() const { return parallelLight; }
+
+						// returns true if this material has a projection texture
+	bool				HasProjectionTexture() const { return lightProjectionImage != NULL; }
+
 	//------------------------------------------------------------------
 
 						// returns the renderbump command line for this shader, or an empty string if not present
@@ -675,6 +681,9 @@ private:
 	bool				unsmoothedTangents;
 	bool				hasSubview;			// mirror, remote render, etc
 	bool				allowOverlays;
+
+	bool				parallelLight;		// parallel (directional) light
+	idImage *			lightProjectionImage;	// projection texture for parallel lights
 
 	int					numOps;
 	expOp_t *			ops;				// evaluate to make expressionRegisters

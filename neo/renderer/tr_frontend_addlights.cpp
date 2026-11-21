@@ -35,6 +35,7 @@ extern idCVar r_useAreasConnectedForShadowCulling;
 extern idCVar r_useParallelAddShadows;
 extern idCVar r_forceShadowCaps;
 extern idCVar r_useShadowPreciseInsideTest;
+extern idCVar r_useShadowMaps;
 
 idCVar r_useAreasConnectedForShadowCulling( "r_useAreasConnectedForShadowCulling", "2", CVAR_RENDERER | CVAR_INTEGER, "cull entities cut off by doors" );
 idCVar r_useParallelAddLights( "r_useParallelAddLights", "1", CVAR_RENDERER | CVAR_BOOL, "aadd all lights in parallel with jobs" );
@@ -98,6 +99,7 @@ static void R_AddSingleLight( viewLight_t * vLight ) {
 	vLight->removeFromList = true;
 	vLight->shadowOnlyViewEntities = NULL;
 	vLight->preLightShadowVolumes = NULL;
+	vLight->shadowCasters = NULL;  // Shadow map casters
 
 	// globals we really should pass in...
 	const viewDef_t * viewDef = tr.viewDef;
@@ -376,7 +378,7 @@ static void R_AddSingleLight( viewLight_t * vLight ) {
 	//--------------------------------------------
 	// add the prelight shadows for the static world geometry
 	//--------------------------------------------
-	if ( light->parms.prelightModel != NULL ) {
+	if ( light->parms.prelightModel != NULL && !r_useShadowMaps.GetBool() ) {
 		srfTriangles_t * tri = light->parms.prelightModel->Surface( 0 )->geometry;
 
 		// these shadows will have valid bounds, and can be culled normally,
@@ -495,6 +497,48 @@ void R_AddLights() {
 			R_SetEntityDefViewEntity( shadEnt->edef );
 		}
 
+		// Gather shadow casters for shadow maps
+		if ( r_useShadowMaps.GetBool() && vLight->lightDef->LightCastsShadows() ) {
+			// Gather casters from viewEntities that cast shadows
+			for ( viewEntity_t * vEnt = tr.viewDef->viewEntitys; vEnt != NULL; vEnt = vEnt->next ) {
+				if ( vEnt->entityDef == NULL ) {
+					continue;
+				}
+				// Check if this entity casts shadows into this light
+				if ( vLight->entityInteractionState[ vEnt->entityDef->index ] == viewLight_t::INTERACTION_YES ) {
+					// Add this entity's drawSurfs to the shadow caster chain
+					for ( drawSurf_t * ds = vEnt->drawSurfs; ds != NULL; ds = ds->nextOnLight ) {
+						// Only add surfaces that cast shadows
+						if ( ds->material && ds->material->SurfaceCastsShadow() ) {
+							ds->nextOnLight = vLight->shadowCasters;
+							vLight->shadowCasters = ds;
+						}
+					}
+				}
+			}
+
+			// Also add prelight model surfaces if present
+			if ( vLight->lightDef->parms.prelightModel != NULL ) {
+				srfTriangles_t * tri = vLight->lightDef->parms.prelightModel->Surface( 0 )->geometry;
+				if ( tri && tri->indexCache ) {
+					drawSurf_t * ds = (drawSurf_t *)R_FrameAlloc( sizeof( *ds ), FRAME_ALLOC_DRAW_SURFACE );
+					ds->frontEndGeo = tri;
+					ds->ambientCache = 0;
+					ds->indexCache = tri->indexCache;
+					ds->shadowCache = tri->shadowCache;
+					ds->jointCache = 0;
+					ds->numIndexes = tri->numIndexes;
+					ds->space = &tr.viewDef->worldSpace;
+					ds->material = NULL;
+					ds->extraGLState = 0;
+					ds->shaderRegisters = NULL;
+					ds->scissorRect = vLight->scissorRect;
+					ds->nextOnLight = vLight->shadowCasters;
+					vLight->shadowCasters = ds;
+				}
+			}
+		}
+
 		if ( r_showLightScissors.GetBool() ) {
 			R_ShowColoredScreenRect( vLight->scissorRect, vLight->lightDef->index );
 		}
@@ -504,14 +548,14 @@ void R_AddLights() {
 	// Add jobs to setup pre-light shadow volumes.
 	//-------------------------------------------------
 
-	if ( r_useParallelAddShadows.GetInteger() == 1 ) {
+	if ( r_useParallelAddShadows.GetInteger() == 1 && !r_useShadowMaps.GetBool() ) {
 		for ( viewLight_t * vLight = tr.viewDef->viewLights; vLight != NULL; vLight = vLight->next ) {
 			for ( preLightShadowVolumeParms_t * shadowParms = vLight->preLightShadowVolumes; shadowParms != NULL; shadowParms = shadowParms->next ) {
 				tr.frontEndJobList->AddJob( (jobRun_t)PreLightShadowVolumeJob, shadowParms );
 			}
 			vLight->preLightShadowVolumes = NULL;
 		}
-	} else {
+	} else if ( !r_useShadowMaps.GetBool() ) {
 		int start = Sys_Microseconds();
 
 		for ( viewLight_t * vLight = tr.viewDef->viewLights; vLight != NULL; vLight = vLight->next ) {
@@ -589,7 +633,7 @@ void R_OptimizeViewLightsList() {
 			return ((sortLight_t *)a)->screenArea - ((sortLight_t *)b)->screenArea;
 		}
 	};
-	sortLight_t * sortLights = (sortLight_t *)_alloca( sizeof( sortLight_t ) * numViewLights );
+	sortLight_t * sortLights = (sortLight_t *)alloca( sizeof( sortLight_t ) * numViewLights );
 	int	numSortLightsFilled = 0;
 	for ( viewLight_t * vLight = tr.viewDef->viewLights; vLight != NULL; vLight = vLight->next ) {
 		sortLights[ numSortLightsFilled ].vLight = vLight;

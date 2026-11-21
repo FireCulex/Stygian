@@ -248,7 +248,7 @@ name contains GetName() upon entry
 	_name.ExtractFileExtension( extension );
 	_name.StripFileExtension();
 
-	_name += va( "#__%02d%02d", (int)_usage, (int)_cube );
+	_name += va_format( "#__%02d%02d", (int)_usage, (int)_cube );
 	if ( extension.Length() > 0 ) {
 		_name.SetFileExtension( extension );
 	}

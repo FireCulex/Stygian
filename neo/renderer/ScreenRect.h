@@ -54,6 +54,7 @@ public:
 	// clear to backwards values
 	void		Clear();
 	bool		IsEmpty() const;
+	bool		IsValid() const { return x1 <= x2 && y1 <= y2; }
 	short		GetWidth() const { return x2 - x1 + 1; }
 	short		GetHeight() const { return y2 - y1 + 1; }
 	int			GetArea() const { return ( x2 - x1 + 1 ) * ( y2 - y1 + 1 ); }

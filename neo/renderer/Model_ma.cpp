@@ -118,7 +118,7 @@ bool MA_ParseAttribHeader(idParser &parser, maAttribHeader_t* header) {
 bool MA_ReadVec3(idParser& parser, idVec3& vec) {
 	idToken token;
 	if(!parser.SkipUntilString("double3")) {
-		throw idException( va("Maya Loader '%s': Invalid Vec3", parser.GetFileName()) );
+		throw idException( va_format("Maya Loader '%s': Invalid Vec3", parser.GetFileName()) );
 	}
 
 
@@ -384,7 +384,7 @@ bool MA_ParseFace(idParser& parser, maAttribHeader_t* header) {
 		if(!token.Icmp("f")) {
 			int count = parser.ParseInt();
 			if(count != 3) {
-				throw idException(va("Maya Loader '%s': Face is not a triangle.", parser.GetFileName()));
+				throw idException(va_format("Maya Loader '%s': Face is not a triangle.", parser.GetFileName()));
 			}
 			//Increment the face number because a new face always starts with an "f" token
 			currentFace++;
@@ -402,7 +402,7 @@ bool MA_ParseFace(idParser& parser, maAttribHeader_t* header) {
 			int uvstIndex = parser.ParseInt(); uvstIndex;
 			int count = parser.ParseInt();
 			if(count != 3) {
-				throw idException(va("Maya Loader '%s': Invalid texture coordinates.", parser.GetFileName()));
+				throw idException(va_format("Maya Loader '%s': Invalid texture coordinates.", parser.GetFileName()));
 			}
 			pMesh->faces[currentFace].tVertexNum[0] = parser.ParseInt();
 			pMesh->faces[currentFace].tVertexNum[1] = parser.ParseInt();
@@ -411,7 +411,7 @@ bool MA_ParseFace(idParser& parser, maAttribHeader_t* header) {
 		} else if(!token.Icmp("mf")) {
 			int count = parser.ParseInt();
 			if(count != 3) {
-				throw idException(va("Maya Loader '%s': Invalid texture coordinates.", parser.GetFileName()));
+				throw idException(va_format("Maya Loader '%s': Invalid texture coordinates.", parser.GetFileName()));
 			}
 			pMesh->faces[currentFace].tVertexNum[0] = parser.ParseInt();
 			pMesh->faces[currentFace].tVertexNum[1] = parser.ParseInt();
@@ -421,7 +421,7 @@ bool MA_ParseFace(idParser& parser, maAttribHeader_t* header) {
 
 			int count = parser.ParseInt();
 			if(count != 3) {
-				throw idException(va("Maya Loader '%s': Invalid vertex color.", parser.GetFileName()));
+				throw idException(va_format("Maya Loader '%s': Invalid vertex color.", parser.GetFileName()));
 			}
 			pMesh->faces[currentFace].vertexColors[0] = parser.ParseInt();
 			pMesh->faces[currentFace].vertexColors[1] = parser.ParseInt();
@@ -659,7 +659,7 @@ void MA_ParseMesh(idParser& parser) {
 					//The vertex is not shared so get the next normal
 					if(pMesh->nextNormal >= pMesh->numNormals) {
 						//We are using more normals than exist
-						throw idException(va("Maya Loader '%s': Invalid Normals Index.", parser.GetFileName()));
+						throw idException(va_format("Maya Loader '%s': Invalid Normals Index.", parser.GetFileName()));
 					}
 					pMesh->faces[i].vertexNormals[j] = pMesh->normals[pMesh->nextNormal];
 					pMesh->nextNormal++;
@@ -692,9 +692,9 @@ void MA_ParseMesh(idParser& parser) {
 		pMesh->vertexes[(int)pMesh->vertTransforms[i].w] +=  pMesh->vertTransforms[i].ToVec3();
 	}
 	
-	MA_VERBOSE((va("MESH %s - parent %s\n", header.name, header.parent)));
-	MA_VERBOSE((va("\tverts:%d\n",maGlobal.currentObject->mesh.numVertexes)));
-	MA_VERBOSE((va("\tfaces:%d\n",maGlobal.currentObject->mesh.numFaces)));
+	MA_VERBOSE((va_format("MESH %s - parent %s\n", header.name, header.parent)));
+	MA_VERBOSE((va_format("\tverts:%d\n",maGlobal.currentObject->mesh.numVertexes)));
+	MA_VERBOSE((va_format("\tfaces:%d\n",maGlobal.currentObject->mesh.numFaces)));
 }
 
 void MA_ParseFileNode(idParser& parser) {
@@ -811,7 +811,7 @@ bool MA_ParseConnectAttr(idParser& parser) {
 	temp = token;
 	int dot = temp.Find(".");
 	if(dot == -1) {
-		throw idException(va("Maya Loader '%s': Invalid Connect Attribute.", parser.GetFileName()));
+		throw idException(va_format("Maya Loader '%s': Invalid Connect Attribute.", parser.GetFileName()));
 	}
 	srcName = temp.Left(dot);
 	srcType = temp.Right(temp.Length()-dot-1);
@@ -820,7 +820,7 @@ bool MA_ParseConnectAttr(idParser& parser) {
 	temp = token;
 	dot = temp.Find(".");
 	if(dot == -1) {
-		throw idException(va("Maya Loader '%s': Invalid Connect Attribute.", parser.GetFileName()));
+		throw idException(va_format("Maya Loader '%s': Invalid Connect Attribute.", parser.GetFileName()));
 	}
 	destName = temp.Left(dot);
 	destType = temp.Right(temp.Length()-dot-1);

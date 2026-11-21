@@ -274,7 +274,7 @@ idRenderModel *idRenderModelManagerLocal::GetModel( const char *_modelName, bool
 				// reload it if it was purged
 				idStr generatedFileName = "generated/rendermodels/";
 				generatedFileName.AppendPath( canonical );
-				generatedFileName.SetFileExtension( va( "b%s", extension.c_str() ) );
+				generatedFileName.SetFileExtension( va_format( "b%s", extension.c_str() ) );
 				if ( model->SupportsBinaryModel() && r_binaryLoadRenderModels.GetBool() ) {
 					idFileLocal file( fileSystem->OpenFileReadMemory( generatedFileName ) );
 					model->PurgeModel();
@@ -319,7 +319,7 @@ idRenderModel *idRenderModelManagerLocal::GetModel( const char *_modelName, bool
 
 		generatedFileName = "generated/rendermodels/";
 		generatedFileName.AppendPath( canonical );
-		generatedFileName.SetFileExtension( va( "b%s", extension.c_str() ) );
+		generatedFileName.SetFileExtension( va_format( "b%s", extension.c_str() ) );
 
 		// Get the timestamp on the original file, if it's newer than what is stored in binary model, regenerate it
 		ID_TIME_T sourceTimeStamp = fileSystem->GetTimestamp( canonical );
@@ -568,7 +568,7 @@ void idRenderModelManagerLocal::Preload( const idPreloadManifest &manifest  ) {
 				filename += p.resourceName;
 				idStrStatic< 16 > ext;
 				filename.ExtractFileExtension( ext );
-				filename.SetFileExtension( va( "b%s", ext.c_str() ) );
+				filename.SetFileExtension( va_format( "b%s", ext.c_str() ) );
 			}
 			if ( p.resType == PRELOAD_PARTICLE ) {
 				filename = "generated/particles/";
