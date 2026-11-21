@@ -742,7 +742,7 @@ void idProjectile::DefaultDamageEffect( idEntity *soundEnt, const idDict &projec
 	typeName = gameLocal.sufaceTypeNames[ materialType ];
 
 	// play impact sound
-	sound = projectileDef.GetString( va( "snd_%s", typeName ) );
+	sound = projectileDef.GetString( va_format( "snd_%s", typeName ) );
 	if ( *sound == '\0' ) {
 		sound = projectileDef.GetString( "snd_metal" );
 	}
@@ -754,7 +754,7 @@ void idProjectile::DefaultDamageEffect( idEntity *soundEnt, const idDict &projec
 	}
 
 	// project decal
-	decal = projectileDef.GetString( va( "mtr_detonate_%s", typeName ) );
+	decal = projectileDef.GetString( va_format( "mtr_detonate_%s", typeName ) );
 	if ( *decal == '\0' ) {
 		decal = projectileDef.GetString( "mtr_detonate" );
 	}
@@ -2045,7 +2045,7 @@ void idBFGProjectile::Spawn() {
 		secondModel.noShadow = true;
 	}
 	nextDamageTime = 0;
-	damageFreq = NULL;
+	damageFreq = "";
 }
 
 /*

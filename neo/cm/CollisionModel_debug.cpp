@@ -390,7 +390,7 @@ void idCollisionModelManagerLocal::DebugOutput( const idVec3 &origin ) {
 
 	if ( cm_testWalk.GetBool() ) {
 		start = origin;
-		cm_testOrigin.SetString( va( "%1.2f %1.2f %1.2f", start[0], start[1], start[2] ) );
+		cm_testOrigin.SetString( va_format( "%1.2f %1.2f %1.2f", start[0], start[1], start[2] ) );
 	} else {
 		sscanf( cm_testOrigin.GetString(), "%f %f %f", &start[0], &start[1], &start[2] );
 	}

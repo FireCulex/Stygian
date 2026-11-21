@@ -290,7 +290,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 
 	// make sure we're within bounds
 	if ( ( framenum < 1 ) || ( framenum > anims[ 0 ]->NumFrames() ) ) {
-		return va( "Frame %d out of range", framenum );
+		return va_format( "Frame %d out of range", framenum );
 	}
 
 	// frame numbers are 1 based in .def files, but 0 based internally
@@ -308,7 +308,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		fc.type = FC_SCRIPTFUNCTION;
 		fc.function = gameLocal.program.FindFunction( token );
 		if ( !fc.function ) {
-			return va( "Function '%s' not found", token.c_str() );
+			return va_format( "Function '%s' not found", token.c_str() );
 		}
 	} else if ( token == "object_call" ) {
 		if( !src.ReadTokenOnLine( &token ) ) {
@@ -323,10 +323,10 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		fc.type = FC_EVENTFUNCTION;
 		const idEventDef *ev = idEventDef::FindEvent( token );
 		if ( !ev ) {
-			return va( "Event '%s' not found", token.c_str() );
+			return va_format( "Event '%s' not found", token.c_str() );
 		}
 		if ( ev->GetNumArgs() != 0 ) {
-			return va( "Event '%s' has arguments", token.c_str() );
+			return va_format( "Event '%s' has arguments", token.c_str() );
 		}
 		fc.string = new (TAG_ANIM) idStr( token );
 	} else if ( token == "sound" ) {
@@ -469,7 +469,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		} else {
 			fc.skin = declManager->FindSkin( token );
 			if ( !fc.skin ) {
-				return va( "Skin '%s' not found", token.c_str() );
+				return va_format( "Skin '%s' not found", token.c_str() );
 			}
 		}
 	} else if ( token == "fx" ) {
@@ -478,7 +478,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		fc.type = FC_FX;
 		if ( !declManager->FindType( DECL_FX, token.c_str() ) ) {
-			return va( "fx '%s' not found", token.c_str() );
+			return va_format( "fx '%s' not found", token.c_str() );
 		}
 		fc.string = new (TAG_ANIM) idStr( token );
 	} else if ( token == "trigger" ) {
@@ -493,7 +493,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		fc.type = FC_TRIGGER_SMOKE_PARTICLE;
 		if ( !declManager->FindType( DECL_PARTICLE, token.c_str() ) ) {
-			return va( "Particle '%s' not found", token.c_str() );
+			return va_format( "Particle '%s' not found", token.c_str() );
 		}
 		fc.string = new (TAG_ANIM) idStr( token );
 	} else if ( token == "melee" ) {
@@ -502,7 +502,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		fc.type = FC_MELEE;
 		if ( !gameLocal.FindEntityDef( token.c_str(), false ) ) {
-			return va( "Unknown entityDef '%s'", token.c_str() );
+			return va_format( "Unknown entityDef '%s'", token.c_str() );
 		}
 		fc.string = new (TAG_ANIM) idStr( token );
 	} else if ( token == "direct_damage" ) {
@@ -511,7 +511,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		fc.type = FC_DIRECTDAMAGE;
 		if ( !gameLocal.FindEntityDef( token.c_str(), false ) ) {
-			return va( "Unknown entityDef '%s'", token.c_str() );
+			return va_format( "Unknown entityDef '%s'", token.c_str() );
 		}
 		fc.string = new (TAG_ANIM) idStr( token );
 	} else if ( token == "attack_begin" ) {
@@ -520,7 +520,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		fc.type = FC_BEGINATTACK;
 		if ( !gameLocal.FindEntityDef( token.c_str(), false ) ) {
-			return va( "Unknown entityDef '%s'", token.c_str() );
+			return va_format( "Unknown entityDef '%s'", token.c_str() );
 		}
 		fc.string = new (TAG_ANIM) idStr( token );
 	} else if ( token == "attack_end" ) {
@@ -530,7 +530,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 			return "Unexpected end of line";
 		}
 		if ( ( token != "" ) && !modelDef->FindJoint( token ) ) {
-			return va( "Joint '%s' not found", token.c_str() );
+			return va_format( "Joint '%s' not found", token.c_str() );
 		}
 		fc.type = FC_MUZZLEFLASH;
 		fc.string = new (TAG_ANIM) idStr( token );
@@ -539,7 +539,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 			return "Unexpected end of line";
 		}
 		if ( !modelDef->FindJoint( token ) ) {
-			return va( "Joint '%s' not found", token.c_str() );
+			return va_format( "Joint '%s' not found", token.c_str() );
 		}
 		fc.type = FC_CREATEMISSILE;
 		fc.string = new (TAG_ANIM) idStr( token );
@@ -548,7 +548,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 			return "Unexpected end of line";
 		}
 		if ( !modelDef->FindJoint( token ) ) {
-			return va( "Joint '%s' not found", token.c_str() );
+			return va_format( "Joint '%s' not found", token.c_str() );
 		}
 		fc.type = FC_LAUNCHMISSILE;
 		fc.string = new (TAG_ANIM) idStr( token );
@@ -558,7 +558,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		jointInfo = modelDef->FindJoint( token );
 		if ( !jointInfo ) {
-			return va( "Joint '%s' not found", token.c_str() );
+			return va_format( "Joint '%s' not found", token.c_str() );
 		}
 		if( !src.ReadTokenOnLine( &token ) ) {
 			return "Unexpected end of line";
@@ -582,7 +582,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		jointInfo = modelDef->FindJoint( token );
 		if ( !jointInfo ) {
-			return va( "Joint '%s' not found", token.c_str() );
+			return va_format( "Joint '%s' not found", token.c_str() );
 		}
 		if( !src.ReadTokenOnLine( &token ) ) {
 			return "Unexpected end of line";
@@ -608,13 +608,13 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 		}
 		jointInfo = modelDef->FindJoint( token );
 		if ( !jointInfo ) {
-			return va( "Joint '%s' not found", token.c_str() );
+			return va_format( "Joint '%s' not found", token.c_str() );
 		}
 		if( !src.ReadTokenOnLine( &token ) ) {
 			return "Unexpected end of line";
 		}
 		if ( !declManager->FindType( DECL_PARTICLE, token.c_str() ) ) {
-			return va( "Particle '%s' not found", token.c_str() );
+			return va_format( "Particle '%s' not found", token.c_str() );
 		}
 		str += token;
 		fc.type = FC_START_EMITTER;
@@ -675,7 +675,7 @@ const char *idAnim::AddFrameCommand( const idDeclModelDef *modelDef, int framenu
 			fc.string = new (TAG_ANIM) idStr( token );
 		}
 	} else {
-		return va( "Unknown command '%s'", token.c_str() );
+		return va_format( "Unknown command '%s'", token.c_str() );
 	}
 
 	// check if we've initialized the frame loopup table
@@ -1002,7 +1002,7 @@ void idAnim::CallFrameCommands( idEntity *ent, int from, int to ) const {
 				}
 				case FC_RECORDDEMO: {
 					if ( command.string ) {
-						cmdSystem->BufferCommandText( CMD_EXEC_NOW, va( "recordDemo %s", command.string->c_str() ) );
+						cmdSystem->BufferCommandText( CMD_EXEC_NOW, va_format( "recordDemo %s", command.string->c_str() ) );
 					} else {
 						cmdSystem->BufferCommandText( CMD_EXEC_NOW, "stoprecording" );
 					}
@@ -1010,7 +1010,7 @@ void idAnim::CallFrameCommands( idEntity *ent, int from, int to ) const {
 				}
 				case FC_AVIGAME: {
 					if ( command.string ) {
-						cmdSystem->BufferCommandText( CMD_EXEC_NOW, va( "aviGame %s", command.string->c_str() ) );
+						cmdSystem->BufferCommandText( CMD_EXEC_NOW, va_format( "aviGame %s", command.string->c_str() ) );
 					} else {
 						cmdSystem->BufferCommandText( CMD_EXEC_NOW, "aviGame" );
 					}
@@ -5082,7 +5082,7 @@ idRenderModel *idGameEdit::ANIM_CreateMeshForAnim( idRenderModel *model, const c
 		filename = animname;
 		filename.ExtractFileExtension( extension );
 		if ( !extension.Length() ) {
-			animname = args->GetString( va( "anim %s", animname ) );
+			animname = args->GetString( va_format( "anim %s", animname ) );
 		}
 
 		md5anim = animationLib.GetAnim( animname );

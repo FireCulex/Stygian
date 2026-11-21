@@ -247,7 +247,7 @@ bool idInterpreter::GetRegisterValue( const char *name, idStr &out, int scopeDep
 	switch( d->Type() ) {
 	case ev_float:
 		if ( reg.floatPtr ) {
-			out = va("%g", *reg.floatPtr );
+			out = va_format("%g", *reg.floatPtr );
 		} else {
 			out = "0";
 		}
@@ -256,7 +256,7 @@ bool idInterpreter::GetRegisterValue( const char *name, idStr &out, int scopeDep
 
 	case ev_vector:
 		if ( reg.vectorPtr ) {				
-			out = va( "%g,%g,%g", reg.vectorPtr->x, reg.vectorPtr->y, reg.vectorPtr->z );
+			out = va_format( "%g,%g,%g", reg.vectorPtr->x, reg.vectorPtr->y, reg.vectorPtr->z );
 		} else {
 			out = "0,0,0";
 		}
@@ -265,7 +265,7 @@ bool idInterpreter::GetRegisterValue( const char *name, idStr &out, int scopeDep
 
 	case ev_boolean:
 		if ( reg.intPtr ) {
-			out = va( "%d", *reg.intPtr );
+			out = va_format( "%d", *reg.intPtr );
 		} else {
 			out = "0";
 		}
@@ -286,11 +286,11 @@ bool idInterpreter::GetRegisterValue( const char *name, idStr &out, int scopeDep
 								
 		switch ( field->Type() ) {
 		case ev_boolean:
-			out = va( "%d", *( reinterpret_cast<int *>( &obj->data[ reg.ptrOffset ] ) ) );
+			out = va_format( "%d", *( reinterpret_cast<int *>( &obj->data[ reg.ptrOffset ] ) ) );
 			return true;
 
 		case ev_float:
-			out = va( "%g", *( reinterpret_cast<float *>( &obj->data[ reg.ptrOffset ] ) ) );
+			out = va_format( "%g", *( reinterpret_cast<float *>( &obj->data[ reg.ptrOffset ] ) ) );
 			return true;
 
 		default:
@@ -691,7 +691,7 @@ void idInterpreter::CallEvent( const function_t *func, int argsize ) {
 	varEval_t			var;
 	int 				pos;
 	int 				start;
-	int					data[ D_EVENT_MAXARGS ];
+	intptr_t				data[ D_EVENT_MAXARGS ];
 	const idEventDef	*evdef;
 	const char			*format;
 
@@ -863,7 +863,7 @@ void idInterpreter::CallSysEvent( const function_t *func, int argsize ) {
 	varEval_t			source;
 	int 				pos;
 	int 				start;
-	int					data[ D_EVENT_MAXARGS ];
+	intptr_t				data[ D_EVENT_MAXARGS ];
 	const idEventDef	*evdef;
 	const char			*format;
 

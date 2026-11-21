@@ -44,10 +44,10 @@ void idListGUILocal::StateChanged() {
 	}
 
 	for( i = 0; i < Num(); i++ ) {
-		m_pGUI->SetStateString( va( "%s_item_%i", m_name.c_str(), i ), (*this)[i].c_str() ); 
+		m_pGUI->SetStateString( va_format( "%s_item_%i", m_name.c_str(), i ), (*this)[i].c_str() ); 
 	}
 	for( i = Num() ; i < m_water ; i++ ) {
-		m_pGUI->SetStateString( va( "%s_item_%i", m_name.c_str(), i ), "" );
+		m_pGUI->SetStateString( va_format( "%s_item_%i", m_name.c_str(), i ), "" );
 	}
 	m_water = Num();
 	m_pGUI->StateChanged( Sys_Milliseconds() );
@@ -59,7 +59,7 @@ idListGUILocal::GetNumSelections
 ====================
 */
 int idListGUILocal::GetNumSelections() {
-	return m_pGUI->State().GetInt( va( "%s_numsel", m_name.c_str() ) );
+	return m_pGUI->State().GetInt( va_format( "%s_numsel", m_name.c_str() ) );
 }
 
 /*
@@ -71,18 +71,18 @@ int idListGUILocal::GetSelection( char *s, int size, int _sel ) const {
 	if ( s ) {		
 		s[ 0 ] = '\0';
 	}
-	int sel = m_pGUI->State().GetInt( va( "%s_sel_%i", m_name.c_str(), _sel ), "-1" );
+	int sel = m_pGUI->State().GetInt( va_format( "%s_sel_%i", m_name.c_str(), _sel ), "-1" );
 	if ( sel == -1 || sel >= m_ids.Num() ) {
 		return -1;
 	}
 	if ( s ) {
-		idStr::snPrintf( s, size, m_pGUI->State().GetString( va( "%s_item_%i", m_name.c_str(), sel ), "" ) );
+		idStr::snPrintf( s, size, m_pGUI->State().GetString( va_format( "%s_item_%i", m_name.c_str(), sel ), "" ) );
 	}
 	// don't let overflow
 	if ( sel >= m_ids.Num() ) {
 		sel = 0;
 	}
-	m_pGUI->SetStateInt( va( "%s_selid_0", m_name.c_str() ), m_ids[ sel ] ); 
+	m_pGUI->SetStateInt( va_format( "%s_selid_0", m_name.c_str() ), m_ids[ sel ] ); 
 	return m_ids[ sel ];
 }
 
@@ -92,7 +92,7 @@ idListGUILocal::SetSelection
 ====================
 */
 void idListGUILocal::SetSelection( int sel ) {
-	m_pGUI->SetStateInt( va( "%s_sel_0", m_name.c_str() ), sel );
+	m_pGUI->SetStateInt( va_format( "%s_sel_0", m_name.c_str() ), sel );
 	StateChanged();
 }
 

@@ -266,7 +266,7 @@ void idLight::Restore( idRestoreGame *savefile ) {
 	savefile->ReadRenderLight( renderLight );
 
 	savefile->ReadBool( hadPrelightModel );
-	renderLight.prelightModel = renderModelManager->CheckModel( va( "_prelight_%s", name.c_str() ) );
+	renderLight.prelightModel = renderModelManager->CheckModel( va_format( "_prelight_%s", name.c_str() ) );
 	if ( ( renderLight.prelightModel == NULL ) && hadPrelightModel ) {
 		assert( 0 );
 		if ( developer.GetBool() ) {
@@ -352,7 +352,7 @@ void idLight::Spawn() {
 	renderLight.prelightModel = 0;
 	if ( name[ 0 ] ) {
 		// this will return 0 if not found
-		renderLight.prelightModel = renderModelManager->CheckModel( va( "_prelight_%s", name.c_str() ) );
+		renderLight.prelightModel = renderModelManager->CheckModel( va_format( "_prelight_%s", name.c_str() ) );
 	}
 
 	spawnArgs.GetBool( "start_off", "0", start_off );

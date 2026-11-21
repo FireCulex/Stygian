@@ -29,6 +29,10 @@ If you have questions concerning this license or the applicable additional terms
 #include "../../idLib/precompiled.h"
 #include "../Game_local.h"
 
+#include "../../framework/CVarSystem.h"
+idCVar ui_autoSwitch( "ui_autoSwitch", "0", CVAR_BOOL | CVAR_ARCHIVE, "auto switch weapons" );
+idCVar ui_autoReload( "ui_autoReload", "0", CVAR_BOOL | CVAR_ARCHIVE, "auto reload weapons" );
+
 const static int NUM_GAME_OPTIONS_OPTIONS = 8;
 
 const float MIN_FOV = 80.0f;
@@ -263,8 +267,6 @@ bool idMenuScreen_Shell_GameOptions::HandleAction( idWidgetAction & action, cons
 // SCREEN SETTINGS
 /////////////////////////////////
 
-extern idCVar ui_autoSwitch;
-extern idCVar ui_autoReload;
 extern idCVar aa_targetAimAssistEnable;
 extern idCVar in_alwaysRun;
 extern idCVar g_checkpoints;

@@ -105,7 +105,7 @@ void idChoiceWindow::UpdateVars( bool read, bool force ) {
 			}	
 		}
 		if ( !read && guiStr.NeedsUpdate() ) {
-			guiStr.Set( va( "%i", currentChoice ) );
+			guiStr.Set( va_format( "%i", currentChoice ) );
 		}
 	}
 }
@@ -181,7 +181,7 @@ const char *idChoiceWindow::HandleEvent(const sysEvent_t *event, bool *updateVis
 	}
 
 	if ( choiceType == 0 ) {
-		cvarStr.Set( va( "%i", currentChoice ) );
+		cvarStr.Set( va_format( "%i", currentChoice ) );
 	} else if ( values.Num() ) {
 		cvarStr.Set( values[ currentChoice ] );
 	} else {

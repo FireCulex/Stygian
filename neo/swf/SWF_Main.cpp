@@ -26,8 +26,8 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 #pragma hdrstop
-#include "../idlib/precompiled.h"
-#include "../renderer/image.h"
+#include "precompiled.h"
+#include "renderer/Image.h"
 
 #pragma warning(disable: 4355) // 'this' : used in base member initializer list
 

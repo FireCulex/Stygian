@@ -116,10 +116,15 @@ void idSoundSystemLocal::Restart() {
 		}
 	}
 	// Shutdown sound hardware
-	hardware.Shutdown();
+	if ( hardware ) {
+		hardware->Shutdown();
+		delete hardware;
+		hardware = nullptr;
+	}
 	// Reinitialize sound hardware
 	if ( !s_noSound.GetBool() ) {
-		hardware.Init();
+		hardware = new idSoundHardwareSDL();
+		hardware->Init();
 	}
 
 	InitStreamBuffers();
@@ -140,7 +145,8 @@ void idSoundSystemLocal::Init() {
 	random.SetSeed( soundTime );
 
 	if ( !s_noSound.GetBool() ) {
-		hardware.Init();
+		hardware = new idSoundHardwareSDL();
+		hardware->Init();
 		InitStreamBuffers();
 	}
 
@@ -196,7 +202,11 @@ idSoundSystemLocal::Shutdown
 ========================
 */
 void idSoundSystemLocal::Shutdown() {
-	hardware.Shutdown();
+	if ( hardware ) {
+		hardware->Shutdown();
+		delete hardware;
+		hardware = nullptr;
+	}
 	FreeStreamBuffers();
 	samples.DeleteContents( true );
 	sampleHash.Free();
@@ -310,7 +320,7 @@ void idSoundSystemLocal::Render() {
 		currentSoundWorld->Update();
 	}
 
-	hardware.Update();
+	hardware->Update();
 
 	// The sound system doesn't use game time or anything like that because the sounds are decoded in real time. 
 	soundTime = Sys_Milliseconds();
@@ -339,7 +349,9 @@ void idSoundSystemLocal::StopAllSounds() {
 			sw->StopAllSounds();
 		}
 	}
-	hardware.Update();
+	if ( hardware != NULL ) {
+		hardware->Update();
+	}
 }
 
 /*
@@ -348,7 +360,7 @@ idSoundSystemLocal::GetIXAudio2
 ========================
 */
 void * idSoundSystemLocal::GetIXAudio2() const {
-	return (void *)hardware.GetIXAudio2();
+	return nullptr;
 }
 
 /*
@@ -366,7 +378,7 @@ idSoundSystemLocal::AllocateVoice
 ========================
 */
 idSoundVoice * idSoundSystemLocal::AllocateVoice( const idSoundSample * leadinSample, const idSoundSample * loopingSample ) {
-	return hardware.AllocateVoice( leadinSample, loopingSample );
+	return hardware->AllocateVoice( leadinSample, loopingSample );
 }
 
 /*
@@ -375,7 +387,7 @@ idSoundSystemLocal::FreeVoice
 ========================
 */
 void idSoundSystemLocal::FreeVoice( idSoundVoice * voice ) {
-	hardware.FreeVoice( voice );
+	hardware->FreeVoice( voice );
 }
 
 /*

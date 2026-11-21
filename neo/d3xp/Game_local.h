@@ -309,6 +309,11 @@ public:
 	idEntityPtr<idEntity>	portalSkyEnt;
 	bool					portalSkyActive;
 
+	// End level camera and GUI state
+	class idTarget_EndLevel *	endLevel;			// current end level entity
+	idVec3						initialViewOrg;		// initial view position for end level camera
+	idVec3						initialViewAngles;	// initial view angles for end level camera
+
 	void					SetPortalSkyEnt( idEntity *ent );
 	bool					IsPortalSkyAcive();
 
@@ -377,11 +382,11 @@ public:
 
 	// ---------------------- Public idGameLocal Interface -------------------
 
-	void					Printf( VERIFY_FORMAT_STRING const char *fmt, ... ) const;
-	void					DPrintf( VERIFY_FORMAT_STRING const char *fmt, ... ) const;
-	void					Warning( VERIFY_FORMAT_STRING const char *fmt, ... ) const;
-	void					DWarning( VERIFY_FORMAT_STRING const char *fmt, ... ) const;
-	void					Error( VERIFY_FORMAT_STRING const char *fmt, ... ) const;
+	void					Printf( const char *fmt, ... ) const;
+	void					DPrintf( const char *fmt, ... ) const;
+	void					Warning( const char *fmt, ... ) const;
+	void					DWarning( const char *fmt, ... ) const;
+	void					Error( const char *fmt, ... ) const;
 
 							// Initializes all map variables common to both save games and spawned games
 	void					LoadMap( const char *mapName, int randseed );
@@ -622,7 +627,7 @@ private:
 
 	void					InitAsyncNetwork();
 	void					ShutdownAsyncNetwork();
-	void					NetworkEventWarning( const entityNetEvent_t *event, VERIFY_FORMAT_STRING const char *fmt, ... );
+	void					NetworkEventWarning( const entityNetEvent_t *event, const char *fmt, ... );
 	void					ServerProcessEntityNetworkEventQueue();
 	void					ClientProcessEntityNetworkEventQueue();
 							// call after any change to serverInfo. Will update various quick-access flags
@@ -637,6 +642,7 @@ private:
 
 extern idGameLocal			gameLocal;
 extern idAnimManager		animationLib;
+extern idAASFileManager *	AASFileManager;
 
 //============================================================================
 

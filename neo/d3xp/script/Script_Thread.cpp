@@ -263,7 +263,7 @@ idThread::idThread
 */
 idThread::idThread() {
 	Init();
-	SetThreadName( va( "thread_%d", threadIndex ) );
+	SetThreadName( va_format( "thread_%d", threadIndex ) );
 	if ( g_debugScript.GetBool() ) {
 		gameLocal.Printf( "%d: create thread (%d) '%s'\n", gameLocal.time, threadNum, threadName.c_str() );
 	}
@@ -1028,7 +1028,7 @@ idThread::Event_Say
 ================
 */
 void idThread::Event_Say( const char *text ) {
-	cmdSystem->BufferCommandText( CMD_EXEC_NOW, va( "say \"%s\"", text ) );
+	cmdSystem->BufferCommandText( CMD_EXEC_NOW, va_format( "say \"%s\"", text ) );
 }
 
 /*
@@ -1194,7 +1194,7 @@ idThread::Event_SpawnFloat
 void idThread::Event_SpawnFloat( const char *key, float defaultvalue ) {
 	float result;
 
-	spawnArgs.GetFloat( key, va( "%f", defaultvalue ), result );
+	spawnArgs.GetFloat( key, va_format( "%f", defaultvalue ), result );
 	ReturnFloat( result );
 }
 
@@ -1206,7 +1206,7 @@ idThread::Event_SpawnVector
 void idThread::Event_SpawnVector( const char *key, idVec3 &defaultvalue ) {
 	idVec3 result;
 
-	spawnArgs.GetVector( key, va( "%f %f %f", defaultvalue.x, defaultvalue.y, defaultvalue.z ), result );
+	spawnArgs.GetVector( key, va_format( "%f %f %f", defaultvalue.x, defaultvalue.y, defaultvalue.z ), result );
 	ReturnVector( result );
 }
 

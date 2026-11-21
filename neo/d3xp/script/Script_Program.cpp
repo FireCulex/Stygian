@@ -39,12 +39,12 @@ idTypeDef	type_namespace( ev_namespace, &def_namespace, "namespace", sizeof( voi
 idTypeDef	type_string( ev_string, &def_string, "string", MAX_STRING_LEN, NULL );
 idTypeDef	type_float( ev_float, &def_float, "float", sizeof( float ), NULL );
 idTypeDef	type_vector( ev_vector, &def_vector, "vector", sizeof( idVec3 ), NULL );
-idTypeDef	type_entity( ev_entity, &def_entity, "entity", sizeof( int * ), NULL );					// stored as entity number pointer
+idTypeDef	type_entity( ev_entity, &def_entity, "entity", sizeof( int ), NULL );					// stored as entity number (4-byte int, NOT a pointer: Push/GetEntity use int) — sizeof(int*) is 8 on LP64 and breaks stack accounting
 idTypeDef	type_field( ev_field, &def_field, "field", sizeof( void * ), NULL );
 idTypeDef	type_function( ev_function, &def_function, "function", sizeof( void * ), &type_void );
 idTypeDef	type_virtualfunction( ev_virtualfunction, &def_virtualfunction, "virtual function", sizeof( int ), NULL );
 idTypeDef	type_pointer( ev_pointer, &def_pointer, "pointer", sizeof( void * ), NULL );
-idTypeDef	type_object( ev_object, &def_object, "object", sizeof( int * ), NULL );					// stored as entity number pointer
+idTypeDef	type_object( ev_object, &def_object, "object", sizeof( int ), NULL );					// stored as entity number (4-byte int), see type_entity
 idTypeDef	type_jumpoffset( ev_jumpoffset, &def_jumpoffset, "<jump>", sizeof( int ), NULL );		// only used for jump opcodes
 idTypeDef	type_argsize( ev_argsize, &def_argsize, "<argsize>", sizeof( int ), NULL );				// only used for function call and thread opcodes
 idTypeDef	type_boolean( ev_boolean, &def_boolean, "boolean", sizeof( int ), NULL );
@@ -600,7 +600,7 @@ idVarDef::GlobalName
 */
 const char *idVarDef::GlobalName() const {
 	if ( scope != &def_namespace ) {
-		return va( "%s::%s", scope->GlobalName(), name->Name() );
+		return va_format( "%s::%s", scope->GlobalName(), name->Name() );
 	} else {
 		return name->Name();
 	}
@@ -709,7 +709,7 @@ void idVarDef::SetValue( const eval_t &_value, bool constant ) {
 		break;
 
 	default :
-		throw idCompileError( va( "weird type on '%s'", Name() ) );
+		throw idCompileError( va_format( "weird type on '%s'", Name() ) );
 		break;
 	}
 }
@@ -1310,7 +1310,7 @@ idVarDef *idProgram::AllocDef( idTypeDef *type, const char *name, idVarDef *scop
 		def->value.bytePtr = &variables[ numVariables ];
 		numVariables += def->TypeDef()->Size();
 		if ( numVariables > sizeof( variables ) ) {
-			throw idCompileError( va( "Exceeded global memory size (%d bytes)", sizeof( variables ) ) );
+			throw idCompileError( va_format( "Exceeded global memory size (%d bytes)", sizeof( variables ) ) );
 		}
 
 		memset( def->value.bytePtr, 0, def->TypeDef()->Size() );
@@ -1356,7 +1356,7 @@ idVarDef *idProgram::GetDef( const idTypeDef *type, const char *name, const idVa
 
 	// see if the name is already in use for another type
 	if ( bestDef && type && ( bestDef->TypeDef() != type ) ) {
-		throw idCompileError( va( "Type mismatch on redeclaration of %s", name ) );
+		throw idCompileError( va_format( "Type mismatch on redeclaration of %s", name ) );
 	}
 
 	return bestDef;
@@ -1516,7 +1516,7 @@ idProgram::AllocFunction
 */
 function_t &idProgram::AllocFunction( idVarDef *def ) {
 	if ( functions.Num() >= functions.Max() ) {
-		throw idCompileError( va( "Exceeded maximum allowed number of functions (%d)", functions.Max() ) );
+		throw idCompileError( va_format( "Exceeded maximum allowed number of functions (%d)", functions.Max() ) );
 	}
 
 	// fill in the dfunction
@@ -1566,7 +1566,7 @@ idProgram::AllocStatement
 */
 statement_t *idProgram::AllocStatement() {
 	if ( statements.Num() >= statements.Max() ) {
-		throw idCompileError( va( "Exceeded maximum allowed number of statements (%d)", statements.Max() ) );
+		throw idCompileError( va_format( "Exceeded maximum allowed number of statements (%d)", statements.Max() ) );
 	}
 	return statements.Alloc();
 }
@@ -1777,7 +1777,7 @@ bool idProgram::CompileText( const char *source, const char *text, bool console 
 			def = varDefs[ i ];
 			if ( ( def->Type() == ev_function ) && ( ( def->scope->Type() == ev_namespace ) || def->scope->TypeDef()->Inherits( &type_object ) ) ) {
 				if ( !def->value.functionPtr->eventdef && !def->value.functionPtr->firstStatement ) {
-					throw idCompileError( va( "function %s was not defined\n", def->GlobalName() ) );
+					throw idCompileError( va_format( "function %s was not defined\n", def->GlobalName() ) );
 				}
 			}
 		}

@@ -26,6 +26,10 @@ If you have questions concerning this license or the applicable additional terms
 ===========================================================================
 */
 
+
+#ifndef __SYS_LOBBY_H__
+#define __SYS_LOBBY_H__
+
 #include "sys_lobby_backend.h"
 
 #define INVALID_LOBBY_USER_NAME " " // Used to be "INVALID" but Sony might not like that.
@@ -912,3 +916,5 @@ public:
 	virtual idLobbyBackend *		JoinFromConnectInfo( const lobbyConnectInfo_t & connectInfo , idLobbyBackend::lobbyBackendType_t lobbyType ) = 0;
 	virtual void					DestroyLobbyBackend( idLobbyBackend * lobbyBackend ) = 0;
 };
+
+#endif // __SYS_LOBBY_H__

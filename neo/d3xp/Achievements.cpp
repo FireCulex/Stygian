@@ -29,7 +29,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "Game_local.h"
-#include "..\..\doomclassic\doom\doomdef.h"
+#include "../../doomclassic/doom/doomdef.h"
 
 idCVar achievements_Verbose( "achievements_Verbose", "1", CVAR_BOOL, "debug spam" );
 idCVar g_demoMode( "g_demoMode", "0", CVAR_INTEGER, "this is a demo" );
@@ -273,7 +273,7 @@ idAchievementManager::SavePersistentData
 */
 void idAchievementManager::SavePersistentData( idDict & playerInfo ) {
 	for ( int i = 0; i < ACHIEVEMENTS_NUM; ++i ) {
-		playerInfo.SetInt( va( "ach_%d", i ), counts[i] );
+		playerInfo.SetInt( va_format( "ach_%d", i ), counts[i] );
 	}
 }
 
@@ -284,7 +284,7 @@ idAchievementManager::RestorePersistentData
 */
 void idAchievementManager::RestorePersistentData( const idDict & spawnArgs ) {
 	for( int i = 0; i < ACHIEVEMENTS_NUM; ++i ) {
-		counts[i] = spawnArgs.GetInt( va( "ach_%d", i), "0" );
+		counts[i] = spawnArgs.GetInt( va_format( "ach_%d", i), "0" );
 	}
 }
 

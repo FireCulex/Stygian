@@ -804,10 +804,10 @@ void idGameBustOutWindow::UpdateScore() {
 		nextBallScore = gameScore + 10000;
 	}
 
-	gui->SetStateString( "player_score", va("%i", gameScore ) );
-	gui->SetStateString( "balls_remaining", va("%i", ballsRemaining ) );
-	gui->SetStateString( "current_level", va("%i", currentLevel ) );
-	gui->SetStateString( "next_ball_score", va("%i", nextBallScore ) );
+	gui->SetStateString( "player_score", va_format("%i", gameScore ) );
+	gui->SetStateString( "balls_remaining", va_format("%i", ballsRemaining ) );
+	gui->SetStateString( "current_level", va_format("%i", currentLevel ) );
+	gui->SetStateString( "next_ball_score", va_format("%i", nextBallScore ) );
 }
 
 /*

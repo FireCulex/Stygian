@@ -1473,7 +1473,25 @@ int idClip::Contacts( contactInfo_t *contacts, const int maxContacts, const idVe
 		traceBounds.ExpandSelf( depth );
 	}
 
+	// Linux port fix (B2): NaN or degenerate trace bounds would walk the entire
+	// clip sector tree (NaN comparisons always take both branches) and touch
+	// every clip model in the map — bail out instead.
+	if ( !( traceBounds[0][0] <= traceBounds[1][0] && traceBounds[0][1] <= traceBounds[1][1] && traceBounds[0][2] <= traceBounds[1][2] ) ||
+		idMath::Fabs( traceBounds[0][0] ) > 1e30f || idMath::Fabs( traceBounds[0][1] ) > 1e30f || idMath::Fabs( traceBounds[0][2] ) > 1e30f ) {
+		return 0;
+	}
+
 	num = GetTraceClipModels( traceBounds, contentMask, passEntity, clipModelList );
+
+	// Linux port debug (B2): report when a single contact query touches a huge number of clip models
+	if ( num > 400 ) {
+		idVec3 bc = traceBounds.GetCenter();
+		gameLocal.Printf( "CONTACTS-HOT num=%d traceBounds size=(%.1f %.1f %.1f) center=(%.1f %.1f %.1f) start=(%.1f %.1f %.1f)\n",
+			num,
+			traceBounds[1][0] - traceBounds[0][0], traceBounds[1][1] - traceBounds[0][1], traceBounds[1][2] - traceBounds[0][2],
+			bc.x, bc.y, bc.z,
+			start.x, start.y, start.z );
+	}
 
 	for ( i = 0; i < num; i++ ) {
 		touch = clipModelList[i];

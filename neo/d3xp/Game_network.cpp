@@ -30,7 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "Game_local.h"
-#include "..\framework\Common_local.h"
+#include "../../framework/Common_local.h"
 
 static const int SNAP_GAMESTATE = 0;
 static const int SNAP_SHADERPARMS = 1;
@@ -798,7 +798,7 @@ void idGameLocal::ClientReadSnapshot( const idSnapShot & ss ) {
 			} else {
 				idDict args;
 				args.SetInt( "spawn_entnum", entityNumber );
-				args.Set( "name", va( "entity%d", entityNumber ) );
+				args.Set( "name", va_format( "entity%d", entityNumber ) );
 
 				if ( entityDefNumber >= 0 ) {
 					if ( entityDefNumber >= declManager->GetNumDecls( DECL_ENTITYDEF ) ) {

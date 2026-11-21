@@ -295,7 +295,7 @@ void idItem::Spawn() {
 		if ( !ent ) {
 			gameLocal.Error( "Item couldn't find owner '%s'", giveTo.c_str() );
 		}
-		PostEventMS( &EV_Touch, 0, ent, NULL );
+		PostEventMS( &EV_Touch, 0, idEventArg(ent), idEventArg(0) );
 	}
 
 	// idItemTeam does not rotate and bob
@@ -1839,7 +1839,7 @@ void idMoveableItem::DropItems( idAnimatedEntity  *ent, const char *type, idList
 	idEntity *item;
 
 	// drop all items
-	kv = ent->spawnArgs.MatchPrefix( va( "def_drop%sItem", type ), NULL );
+	kv = ent->spawnArgs.MatchPrefix( va_format( "def_drop%sItem", type ), NULL );
 	while ( kv ) {
 
 		c = kv->GetKey().c_str() + kv->GetKey().Length();
@@ -1874,11 +1874,11 @@ void idMoveableItem::DropItems( idAnimatedEntity  *ent, const char *type, idList
 			}
 		}
 
-		kv = ent->spawnArgs.MatchPrefix( va( "def_drop%sItem", type ), kv );
+		kv = ent->spawnArgs.MatchPrefix( va_format( "def_drop%sItem", type ), kv );
 	}
 
 	// change the skin to hide all items
-	skinName = ent->spawnArgs.GetString( va( "skin_drop%s", type ) );
+	skinName = ent->spawnArgs.GetString( va_format( "skin_drop%s", type ) );
 	if ( skinName[0] ) {
 		skin = declManager->FindSkin( skinName );
 		ent->SetSkin( skin );

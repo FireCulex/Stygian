@@ -5630,6 +5630,21 @@ bool idPhysics_AF::EvaluateContacts() {
 	for ( i = 0; i < bodies.Num(); i++ ) {
 		body = bodies[i];
 
+		// Linux port fix (B2): skip bodies whose simulated transform went non-finite.
+		// A NaN origin/bounds makes idClip::Contacts walk the whole clip tree and costs ~100ms+ per body.
+		{
+			const idVec3 &o = body->current->worldOrigin;
+			bool finite = ( o.x == o.x ) && ( o.y == o.y ) && ( o.z == o.z ) &&
+				idMath::Fabs( o.x ) < 1e30f && idMath::Fabs( o.y ) < 1e30f && idMath::Fabs( o.z ) < 1e30f;
+			if ( !finite ) {
+				if ( idLib::frameNumber % 120 == 0 ) {
+					gameLocal.Printf( "AF-NAN %s body %d non-finite origin frame %d\n",
+						self ? self->name.c_str() : "?", i, idLib::frameNumber );
+				}
+				continue;
+			}
+		}
+
 		if ( body->clipMask == 0 ) {
 			continue;
 		}
@@ -6267,10 +6282,20 @@ bool idPhysics_AF::Evaluate( int timeStepMSec, int endTimeMSec ) {
 #endif
 
 	// evaluate contacts
+	int64 afT0 = Sys_Microseconds();
 	EvaluateContacts();
+	int64 afT1 = Sys_Microseconds();
 
 	// setup contact constraints
 	SetupContactConstraints();
+	int64 afT2 = Sys_Microseconds();
+
+	// Linux port debug (B2): report slow AF collision/constraint phases
+	if ( afT2 - afT0 > 20000 ) {
+		gameLocal.Printf( "AF-SLOW %s: bodies=%d contacts=%d contactMs=%lld setupMs=%lld\n",
+			self ? self->name.c_str() : "?", bodies.Num(), contacts.Num(),
+			(long long)( ( afT1 - afT0 ) / 1000 ), (long long)( ( afT2 - afT1 ) / 1000 ) );
+	}
 
 #ifdef AF_TIMINGS
 	timer_collision.Stop();
@@ -6278,6 +6303,12 @@ bool idPhysics_AF::Evaluate( int timeStepMSec, int endTimeMSec ) {
 
 	// evaluate constraint equations
 	EvaluateConstraints( timeStep );
+	int64 afT3 = Sys_Microseconds();
+	if ( afT3 - afT0 > 20000 ) {
+		gameLocal.Printf( "AF-SLOW %s: bodies=%d contacts=%d contactMs=%lld setupMs=%lld constraintsMs=%lld\n",
+			self ? self->name.c_str() : "?", bodies.Num(), contacts.Num(),
+			(long long)( ( afT1 - afT0 ) / 1000 ), (long long)( ( afT2 - afT1 ) / 1000 ), (long long)( ( afT3 - afT2 ) / 1000 ) );
+	}
 
 	// apply friction
 	ApplyFriction( timeStep, endTimeMSec );
@@ -6521,20 +6552,20 @@ void idPhysics_AF::DebugDraw() {
 	if ( af_showMass.GetBool() ) {
 		for ( i = 0; i < bodies.Num(); i++ ) {
 			body = bodies[i];
-			gameRenderWorld->DrawText( va( "\n%1.2f", 1.0f / body->GetInverseMass() ), body->GetWorldOrigin(), 0.08f, colorCyan, gameLocal.GetLocalPlayer()->viewAngles.ToMat3(), 1 );
+			gameRenderWorld->DrawText( va_format( "\n%1.2f", 1.0f / body->GetInverseMass() ), body->GetWorldOrigin(), 0.08f, colorCyan, gameLocal.GetLocalPlayer()->viewAngles.ToMat3(), 1 );
 		}
 	}
 
 	if ( af_showTotalMass.GetBool() ) {
 		axis = gameLocal.GetLocalPlayer()->viewAngles.ToMat3();
-		gameRenderWorld->DrawText( va( "\n%1.2f", totalMass ), bodies[0]->GetWorldOrigin() + axis[2] * 8.0f, 0.15f, colorCyan, axis, 1 );
+		gameRenderWorld->DrawText( va_format( "\n%1.2f", totalMass ), bodies[0]->GetWorldOrigin() + axis[2] * 8.0f, 0.15f, colorCyan, axis, 1 );
 	}
 
 	if ( af_showInertia.GetBool() ) {
 		for ( i = 0; i < bodies.Num(); i++ ) {
 			body = bodies[i];
 			idMat3 &I = body->inertiaTensor;
-			gameRenderWorld->DrawText( va( "\n\n\n( %.1f %.1f %.1f )\n( %.1f %.1f %.1f )\n( %.1f %.1f %.1f )",
+			gameRenderWorld->DrawText( va_format( "\n\n\n( %.1f %.1f %.1f )\n( %.1f %.1f %.1f )\n( %.1f %.1f %.1f )",
 										I[0].x, I[0].y, I[0].z,
 										I[1].x, I[1].y, I[1].z,
 										I[2].x, I[2].y, I[2].z ),

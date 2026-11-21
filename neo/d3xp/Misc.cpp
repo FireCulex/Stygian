@@ -1143,7 +1143,7 @@ void idAnimated::PlayNextAnim() {
 	Show();
 	current_anim_index++;
 
-	spawnArgs.GetString( va( "anim%d", current_anim_index ), NULL, &animname );
+	spawnArgs.GetString( va_format( "anim%d", current_anim_index ), NULL, &animname );
 	if ( !animname ) {
 		anim = 0;
 		animator.Clear( ANIMCHANNEL_ALL, gameLocal.time, FRAME2MS( blendFrames ) );

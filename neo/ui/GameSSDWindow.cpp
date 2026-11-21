@@ -793,7 +793,7 @@ void SSDPoints::Init(idGameSSDWindow* _game, SSDEntity* _ent, int _points, int _
 	endTime = beginTime + length;
 
 	textScale = 0.4f;
-	text = va("%d", _points);
+	text = va_format("%d", _points);
 
 	float width = 0;
 	for(int i = 0; i < text.Length(); i++) {
@@ -1139,7 +1139,7 @@ void SSDPowerup::Init(idGameSSDWindow* _game, float _speed, float _rotation) {
 		powerupType = 0;
 	}
 
-	/*OutputDebugString(va("Powerup: %d\n", powerupType));
+	/*OutputDebugString(va_format("Powerup: %d\n", powerupType));
 	if(powerupType == 0) {
 		int x = 0;
 	}*/
@@ -1706,7 +1706,7 @@ void idGameSSDWindow::LevelComplete() {
 	}
 	int accuracyPoints = Max( 0, accuracy - 50 ) * 20;
 
-	gui->SetStateString("player_accuracy_score", va("%i", accuracyPoints));
+	gui->SetStateString("player_accuracy_score", va_format("%i", accuracyPoints));
 
 	gameStats.score += accuracyPoints;
 
@@ -1719,7 +1719,7 @@ void idGameSSDWindow::LevelComplete() {
 	}
 	accuracyPoints = Max( 0, saveAccuracy - 50 ) * 20;
 
-	gui->SetStateString("save_accuracy_score", va("%i", accuracyPoints));
+	gui->SetStateString("save_accuracy_score", va_format("%i", accuracyPoints));
 
 	gameStats.score += accuracyPoints;
 
@@ -2014,12 +2014,12 @@ void idGameSSDWindow::AddScore(SSDEntity* ent, int points) {
 	entities.Append(pointsEnt);
 
 	gameStats.score += points;
-	gui->SetStateString( "player_score", va("%i", gameStats.score ) );
+	gui->SetStateString( "player_score", va_format("%i", gameStats.score ) );
 }
 
 void idGameSSDWindow::AddDamage(int damage) {
 	gameStats.health -= damage;
-	gui->SetStateString( "player_health", va("%i", gameStats.health ) );
+	gui->SetStateString( "player_health", va_format("%i", gameStats.health ) );
 
 	gui->HandleNamedEvent( "playerDamage" );
 
@@ -2089,8 +2089,8 @@ void idGameSSDWindow::OnSuperBlaster() {
 void idGameSSDWindow::RefreshGuiData() {
 
 
-	gui->SetStateString("nextLevel", va("%i", gameStats.nextLevel+1));
-	gui->SetStateString("currentLevel", va("%i", gameStats.currentLevel+1));
+	gui->SetStateString("nextLevel", va_format("%i", gameStats.nextLevel+1));
+	gui->SetStateString("currentLevel", va_format("%i", gameStats.currentLevel+1));
 
 	float accuracy;
 	if(!gameStats.levelStats.shotCount) {
@@ -2098,7 +2098,7 @@ void idGameSSDWindow::RefreshGuiData() {
 	} else {
 		accuracy = ((float)gameStats.levelStats.hitCount/(float)gameStats.levelStats.shotCount)*100.0f;
 	}
-	gui->SetStateString( "player_accuracy", va("%d%%", (int)accuracy));
+	gui->SetStateString( "player_accuracy", va_format("%d%%", (int)accuracy));
 
 	float saveAccuracy;
 	int totalAst = gameStats.levelStats.savedAstronauts + gameStats.levelStats.killedAstronauts;
@@ -2108,7 +2108,7 @@ void idGameSSDWindow::RefreshGuiData() {
 	} else {
 		saveAccuracy = ((float)gameStats.levelStats.savedAstronauts/(float)totalAst)*100.0f;
 	}
-	gui->SetStateString( "save_accuracy", va("%d%%", (int)saveAccuracy));
+	gui->SetStateString( "save_accuracy", va_format("%d%%", (int)saveAccuracy));
 
 
 
@@ -2116,20 +2116,20 @@ void idGameSSDWindow::RefreshGuiData() {
 	if(gameStats.levelStats.targetEnt) {
 		int dist = (gameStats.levelStats.targetEnt->position.z/100.0f);
 		dist *= 100;
-		gui->SetStateString("target_info", va("%i meters", dist));
+		gui->SetStateString("target_info", va_format("%i meters", dist));
 	} else {
 		gui->SetStateString("target_info", "No Target");
 	}
 
-	gui->SetStateString( "player_health", va("%i", gameStats.health ) );
-	gui->SetStateString( "player_score", va("%i", gameStats.score ) );
-	gui->SetStateString( "player_prebonusscore", va("%i", gameStats.prebonusscore ) );
-	gui->SetStateString( "level_complete", va("%i/%i", gameStats.levelStats.savedAstronauts, levelData[gameStats.currentLevel].needToWin ));
+	gui->SetStateString( "player_health", va_format("%i", gameStats.health ) );
+	gui->SetStateString( "player_score", va_format("%i", gameStats.score ) );
+	gui->SetStateString( "player_prebonusscore", va_format("%i", gameStats.prebonusscore ) );
+	gui->SetStateString( "level_complete", va_format("%i/%i", gameStats.levelStats.savedAstronauts, levelData[gameStats.currentLevel].needToWin ));
 
 
 	if(superBlasterTimeout) {
 		float timeRemaining = (superBlasterTimeout - ssdTime)/1000.0f;
-		gui->SetStateString("super_blaster_time", va("%.2f", timeRemaining));
+		gui->SetStateString("super_blaster_time", va_format("%.2f", timeRemaining));
 	}
 }
 

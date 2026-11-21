@@ -95,7 +95,7 @@ void idTrigger::DrawDebugInfo() {
 				}
 
 				if ( func ) {
-					gameRenderWorld->DrawText( va( "call script '%s'", func->Name() ), ent->GetPhysics()->GetAbsBounds().GetCenter() - up, 0.1f, colorWhite, axis, 1 );
+					gameRenderWorld->DrawText( va_format( "call script '%s'", func->Name() ), ent->GetPhysics()->GetAbsBounds().GetCenter() - up, 0.1f, colorWhite, axis, 1 );
 				}
 			}
 
@@ -1335,10 +1335,10 @@ void idTrigger_Flag::Event_Touch( idEntity *other, trace_t *trace ) {
 				flag->PostEventMS( eventFlag, 0 );
 			break;
 			case 1 :
-				flag->PostEventMS( eventFlag, 0, NULL );
+				flag->PostEventMS( eventFlag, 0, idEventArg(0) );
 			break;
 			case 2 :
-				flag->PostEventMS( eventFlag, 0, NULL, NULL );
+				flag->PostEventMS( eventFlag, 0, idEventArg(0), idEventArg(0) );
 			break;
 		}
 

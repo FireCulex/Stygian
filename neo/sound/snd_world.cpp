@@ -403,7 +403,7 @@ void idSoundWorldLocal::Update() {
 	bool showVoices = s_showVoices.GetBool();
 	if ( showVoices ) {
 		showVoiceTable.Format( "currentCushionDB: %5.1f  freeVoices: %i zombieVoices: %i buffers:%i/%i\n", currentCushionDB, 
-			soundSystemLocal.hardware.GetNumFreeVoices(), soundSystemLocal.hardware.GetNumZombieVoices(),
+			soundSystemLocal.hardware->GetNumFreeVoices(), soundSystemLocal.hardware->GetNumZombieVoices(),
 			soundSystemLocal.activeStreamBufferContexts.Num(), soundSystemLocal.freeStreamBufferContexts.Num() );
 	}
 	for ( int i = 0; i < activeEmitterChannels.Num(); i++ ) {
@@ -416,11 +416,11 @@ void idSoundWorldLocal::Update() {
 			idSoundSample * leadinSample = chan->leadinSample;
 			idSoundSample * loopingSample = chan->loopingSample;
 			if ( loopingSample == NULL ) {
-				voiceLine.Append( va( "%ikhz*%i %s\n", leadinSample->SampleRate()/1000, leadinSample->NumChannels(), leadinSample->GetName() ) );
+				voiceLine.Append( va_format( "%ikhz*%i %s\n", leadinSample->SampleRate()/1000, leadinSample->NumChannels(), leadinSample->GetName() ) );
 			} else if ( loopingSample == leadinSample ) {
-				voiceLine.Append( va( "%ikhz*%i <LOOPING> %s\n", leadinSample->SampleRate()/1000, leadinSample->NumChannels(), leadinSample->GetName() ) );
+				voiceLine.Append( va_format( "%ikhz*%i <LOOPING> %s\n", leadinSample->SampleRate()/1000, leadinSample->NumChannels(), leadinSample->GetName() ) );
 			} else {
-				voiceLine.Append( va( "%ikhz*%i %s | %ikhz*%i %s\n", leadinSample->SampleRate()/1000, leadinSample->NumChannels(), leadinSample->GetName(), loopingSample->SampleRate()/1000, loopingSample->NumChannels(), loopingSample->GetName() ) );
+				voiceLine.Append( va_format( "%ikhz*%i %s | %ikhz*%i %s\n", leadinSample->SampleRate()/1000, leadinSample->NumChannels(), leadinSample->GetName(), loopingSample->SampleRate()/1000, loopingSample->NumChannels(), loopingSample->GetName() ) );
 			}
 			showVoiceTable += voiceLine;
 		}
@@ -468,7 +468,7 @@ void idSoundWorldLocal::Update() {
 			// draw the index
 			idVec3 textPos = emitter->origin;
 			textPos.z -= 8;
-			renderWorld->DrawText( va("%i", e), textPos, 0.1f, idVec4(1,0,0,1), listener.axis, 1, lifetime );
+			renderWorld->DrawText( va_format("%i", e), textPos, 0.1f, idVec4(1,0,0,1), listener.axis, 1, lifetime );
 			textPos.z += 8;
 
 			// run through all the channels

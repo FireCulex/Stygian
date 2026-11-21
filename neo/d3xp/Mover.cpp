@@ -1706,7 +1706,7 @@ void idElevator::Spawn() {
 		str = kv->GetKey().Right( kv->GetKey().Length() - len1 );
 		floorInfo_s fi;
 		fi.floor = atoi( str );
-		fi.door = spawnArgs.GetString( va( "floorDoor_%i", fi.floor ) );
+		fi.door = spawnArgs.GetString( va_format( "floorDoor_%i", fi.floor ) );
 		fi.pos = spawnArgs.GetVector( kv->GetKey() );
 		floorInfo.Append( fi );
 		kv = spawnArgs.MatchPrefix( "floorPos_", kv );
@@ -2024,7 +2024,7 @@ void idElevator::DoneMoving() {
 		if ( ent ) {
 			for ( int j = 0; j < MAX_RENDERENTITY_GUI; j++ ) {
 				if ( ent->GetRenderEntity() && ent->GetRenderEntity()->gui[ j ] ) {
-					ent->GetRenderEntity()->gui[ j ]->SetStateString( "floor", va( "%i", currentFloor ) );
+					ent->GetRenderEntity()->gui[ j ]->SetStateString( "floor", va_format( "%i", currentFloor ) );
 					ent->GetRenderEntity()->gui[ j ]->StateChanged( gameLocal.slow.time, true );
 				}
 			}

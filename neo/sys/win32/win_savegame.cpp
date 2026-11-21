@@ -149,7 +149,7 @@ int idSaveGameThread::Save() {
 
 		idStr fileName = saveFolder;
 		fileName.AppendPath( file->GetName() );
-		idStr tempFileName = va( "%s.temp", fileName.c_str() );
+		idStr tempFileName = va_format( "%s.temp", fileName.c_str() );
 
 		idFile * outputFile = fileSystem->OpenFileWrite( tempFileName, "fs_savePath" );
 		if ( outputFile == NULL ) {
@@ -679,7 +679,7 @@ void Sys_SaveGameCheck( bool & exists, bool & autosaveExists ) {
 		idLib::PrintfIf( saveGame_verbose.GetBool(), "found %d savegames\n", fileList.Num() );
 
 		for ( int i = 0; i < fileList.Num(); i++ ) {
-			const char * directory = va( "%s/%s", saveFolder, fileList[i].c_str() );
+			const char * directory = va_format( "%s/%s", saveFolder, fileList[i].c_str() );
 
 			if ( fileSystem->IsFolder( directory, "fs_savePath" ) == FOLDER_YES ) {
 				exists = true;

@@ -168,6 +168,7 @@ void idTarget_SessionCommand::Event_Activate( idEntity *activator ) {
 }
 
 
+#if 0
 /*
 ===============================================================================
 
@@ -277,6 +278,7 @@ void idTarget_EndLevel::Event_Activate( idEntity *activator ) {
 
 	gameLocal.sessionCommand += nextMap;
 }
+#endif
 
 
 /*

@@ -32,7 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../Game_local.h"
 
-#include "TypeInfo.h"
+#include "Class.h"
 
 /*
 Save game related helper classes.
@@ -127,7 +127,7 @@ void idSaveGame::Close() {
 #ifdef ID_DEBUG_MEMORY
 	idStr gameState = file->GetName();
 	gameState.StripFileExtension();
-	WriteGameState_f( idCmdArgs( va( "test %s_save", gameState.c_str() ), false ) );
+	WriteGameState_f( idCmdArgs( va_format( "test %s_save", gameState.c_str() ), false ) );
 #endif
 }
 
@@ -918,8 +918,8 @@ void idRestoreGame::RestoreObjects() {
 #ifdef ID_DEBUG_MEMORY
 	idStr gameState = file->GetName();
 	gameState.StripFileExtension();
-	WriteGameState_f( idCmdArgs( va( "test %s_restore", gameState.c_str() ), false ) );
-	//CompareGameState_f( idCmdArgs( va( "test %s_save", gameState.c_str() ) ) );
+	WriteGameState_f( idCmdArgs( va_format( "test %s_restore", gameState.c_str() ), false ) );
+	//CompareGameState_f( idCmdArgs( va_format( "test %s_save", gameState.c_str() ) ) );
 	gameLocal.Error( "dumped game states" );
 #endif
 }

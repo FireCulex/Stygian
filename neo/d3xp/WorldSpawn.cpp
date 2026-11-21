@@ -63,7 +63,7 @@ void idWorldspawn::Spawn() {
 	assert( gameLocal.world == NULL );
 	gameLocal.world = this;
 
-	g_gravity.SetFloat( spawnArgs.GetFloat( "gravity", va( "%f", DEFAULT_GRAVITY ) ) );
+	g_gravity.SetFloat( spawnArgs.GetFloat( "gravity", va_format( "%f", DEFAULT_GRAVITY ) ) );
 
 	// disable stamina on hell levels
 	if ( spawnArgs.GetBool( "no_stamina" ) ) {
@@ -114,7 +114,7 @@ idWorldspawn::Restore
 void idWorldspawn::Restore( idRestoreGame *savefile ) {
 	assert( gameLocal.world == this );
 
-	g_gravity.SetFloat( spawnArgs.GetFloat( "gravity", va( "%f", DEFAULT_GRAVITY ) ) );
+	g_gravity.SetFloat( spawnArgs.GetFloat( "gravity", va_format( "%f", DEFAULT_GRAVITY ) ) );
 
 	// disable stamina on hell levels
 	if ( spawnArgs.GetBool( "no_stamina" ) ) {

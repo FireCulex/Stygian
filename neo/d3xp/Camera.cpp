@@ -332,7 +332,7 @@ void idCameraAnim::LoadAnim() {
 		gameLocal.Error( "Missing 'anim' key on '%s'", name.c_str() );
 	}
 
-	filename = spawnArgs.GetString( va( "anim %s", key ) );
+	filename = spawnArgs.GetString( va_format( "anim %s", key ) );
 	if ( !filename.Length() ) {
 		gameLocal.Error( "Missing 'anim %s' key on '%s'", key, name.c_str() );
 	}

@@ -36,6 +36,20 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "idlib/containers/Array.h"
 
+#if !defined(ID_PC_WIN)
+#include <stdint.h>
+typedef uint32_t DWORD;
+typedef uint16_t WORD;
+typedef uint32_t UINT;
+typedef int32_t LONG;
+#ifndef MAX_PATH
+#define MAX_PATH 260
+#endif
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
+
 class idSysMutex;
 class idUserCmdMgr;
 

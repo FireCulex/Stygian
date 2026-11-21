@@ -113,7 +113,7 @@ void idUserInterfaceManagerLocal::SetSize( float width, float height ) {
 
 void idUserInterfaceManagerLocal::Preload( const char *mapName ) {
 	if ( mapName != NULL && mapName[ 0 ] != '\0' ) {
-		mapParser.LoadFromFile( va( "generated/guis/%s.bgui", mapName ) );
+		mapParser.LoadFromFile( va_format( "generated/guis/%s.bgui", mapName ) );
 	}
 }
 
@@ -147,8 +147,8 @@ void idUserInterfaceManagerLocal::EndLevelLoad( const char *mapName ) {
 		common->UpdateLevelLoadPacifier();
 	}
 	if ( cvarSystem->GetCVarBool( "fs_buildresources" ) && mapName != NULL && mapName[ 0 ] != '\0' ) {
-		mapParser.WriteToFile( va( "generated/guis/%s.bgui", mapName ) );
-		idFile *f = fileSystem->OpenFileRead( va( "generated/guis/%s.bgui", mapName ) );
+		mapParser.WriteToFile( va_format( "generated/guis/%s.bgui", mapName ) );
+		idFile *f = fileSystem->OpenFileRead( va_format( "generated/guis/%s.bgui", mapName ) );
 		delete f;
 	}
 
@@ -339,7 +339,7 @@ bool idUserInterfaceLocal::InitFromFile( const char *qpath, bool rebuild, bool c
 		trySource.ToLower();
 		trySource.BackSlashesToSlashes();
 		if ( i == 0 ) {
-			trySource.Replace( "guis/", va( "guis/%s/", sys_lang.GetString() ) );
+			trySource.Replace( "guis/", va_format( "guis/%s/", sys_lang.GetString() ) );
 		}
 		fileSystem->ReadFile( trySource, NULL, &timeStamp);
 		if ( timeStamp != FILE_NOT_FOUND_TIMESTAMP ) {
@@ -375,7 +375,7 @@ bool idUserInterfaceLocal::InitFromFile( const char *qpath, bool rebuild, bool c
 	} else {
 		desktop->SetFlag( WIN_DESKTOP );
 		desktop->name = "Desktop";
-		desktop->text = va( "Invalid GUI: %s", qpath );
+		desktop->text = va_format( "Invalid GUI: %s", qpath );
 		desktop->rect = idRectangle( 0.0f, 0.0f, 640.0f, 480.0f );
 		desktop->drawRect = desktop->rect;
 		desktop->foreColor = idVec4( 1.0f, 1.0f, 1.0f, 1.0f );

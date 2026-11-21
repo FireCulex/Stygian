@@ -115,11 +115,12 @@ private:
 /*
 ===============================================================================
 
-idTarget_EndLevel
+idTarget_EndLevel (DISABLED - duplicate of EndLevel.h class)
 
 ===============================================================================
 */
 
+#if 0
 class idTarget_EndLevel : public idTarget {
 public:
 	CLASS_PROTOTYPE( idTarget_EndLevel );
@@ -128,6 +129,7 @@ private:
 	void				Event_Activate( idEntity *activator );
 
 };
+#endif
 
 
 /*

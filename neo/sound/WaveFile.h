@@ -83,6 +83,9 @@ public:
 		CHANNEL_MASK_ALL				= BIT( CHANNEL_INDEX_MAX ) - 1,
 	};
 
+	// Maximum number of channels per voice (for hardware mixing)
+	#define MAX_CHANNELS_PER_VOICE	8
+
 	// This matches waveFmt_t::formatTag
 	// These are the only wave formats that we understand
 	enum {

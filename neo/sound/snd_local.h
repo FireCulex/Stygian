@@ -42,8 +42,8 @@ If you have questions concerning this license or the applicable additional terms
 // We may need up to 3 buffers for each hardware voice if they are all long sounds
 #define MAX_SOUND_BUFFERS ( MAX_HARDWARE_VOICES * 3 )
 
-// Maximum number of channels in a sound sample
-#define MAX_CHANNELS_PER_VOICE	8
+// Maximum number of channels in a sound sample is now defined in WaveFile.h
+// #define MAX_CHANNELS_PER_VOICE	8
 
 /*
 ========================
@@ -82,15 +82,16 @@ typedef enum {
 
 #define OPERATION_SET 1
 
-#include <dxsdkver.h>
+// #include <dxsdkver.h>
+// #include <xaudio2.h>
+// #include <xaudio2fx.h>
+// #include <X3DAudio.h>
+// #include <xma2defs.h>
+// #include "XAudio2/XA2_SoundSample.h"
+// #include "XAudio2/XA2_SoundVoice.h"
+// #include "XAudio2/XA2_SoundHardware.h"
 
-#include <xaudio2.h>
-#include <xaudio2fx.h>
-#include <X3DAudio.h>
-#include <xma2defs.h>
-#include "XAudio2/XA2_SoundSample.h"
-#include "XAudio2/XA2_SoundVoice.h"
-#include "XAudio2/XA2_SoundHardware.h"
+#include "sdl/sdl_audio.h"
 
 
 
@@ -436,8 +437,8 @@ public:
 			sample( NULL ),
 			bufferNumber( 0 )
 		{ }
-		idSoundVoice_XAudio2 *	voice;
-		idSoundSample_XAudio2 * sample;
+		idSoundVoice *	voice;
+		idSoundSample * sample;
 		int bufferNumber;
 	};
 
@@ -456,7 +457,12 @@ public:
 	idList<idSoundSample *, TAG_AUDIO>		samples;
 	idHashIndex					sampleHash;
 
-	idSoundHardware				hardware;
+	// #include "XAudio2/XA2_SoundHardware.h"
+
+	#include "sound_hardware_base.h"
+	#include "sdl/sdl_audio.h"
+
+	idSoundHardware*			hardware;
 
 	idRandom2					random;
 	

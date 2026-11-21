@@ -229,10 +229,10 @@ Only called at player spawn time, not each weapon switch
 void idWeapon::SetOwner( idPlayer *_owner ) {
 	assert( !owner );
 	owner = _owner;
-	SetName( va( "%s_weapon", owner->name.c_str() ) );
+	SetName( va_format( "%s_weapon", owner->name.c_str() ) );
 
 	if ( worldModel.GetEntity() ) {
-		worldModel.GetEntity()->SetName( va( "%s_weapon_worldmodel", owner->name.c_str() ) );
+		worldModel.GetEntity()->SetName( va_format( "%s_weapon_worldmodel", owner->name.c_str() ) );
 	}
 }
 
@@ -246,10 +246,10 @@ Only called at player spawn time, not each weapon switch
 void idWeapon::SetFlashlightOwner( idPlayer *_owner ) {
 	assert( !owner );
 	owner = _owner;
-	SetName( va( "%s_weapon_flashlight", owner->name.c_str() ) );
+	SetName( va_format( "%s_weapon_flashlight", owner->name.c_str() ) );
 
 	if ( worldModel.GetEntity() ) {
-		worldModel.GetEntity()->SetName( va( "%s_weapon_flashlight_worldmodel", owner->name.c_str() ) );
+		worldModel.GetEntity()->SetName( va_format( "%s_weapon_flashlight_worldmodel", owner->name.c_str() ) );
 	}
 }
 
@@ -1233,13 +1233,13 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 
 			strcpy(newParticle.name, name.c_str());
 
-			idStr jointName = weaponDef->dict.GetString(va("%s_joint", name.c_str()));
+			idStr jointName = weaponDef->dict.GetString(va_format("%s_joint", name.c_str()));
 			newParticle.joint = animator.GetJointHandle(jointName.c_str());
-			newParticle.smoke = weaponDef->dict.GetBool(va("%s_smoke", name.c_str()));
+			newParticle.smoke = weaponDef->dict.GetBool(va_format("%s_smoke", name.c_str()));
 			newParticle.active = false;
 			newParticle.startTime = 0;
 
-			idStr particle = weaponDef->dict.GetString(va("%s_particle", name.c_str()));
+			idStr particle = weaponDef->dict.GetString(va_format("%s_particle", name.c_str()));
 			strcpy(newParticle.particlename, particle.c_str());
 
 			if(newParticle.smoke) {
@@ -1278,13 +1278,13 @@ void idWeapon::GetWeaponDef( const char *objectname, int ammoinclip ) {
 			idStr name = lkv->GetValue();
 			strcpy(newLight.name, name.c_str());
 
-			idStr jointName = weaponDef->dict.GetString(va("%s_joint", name.c_str()));
+			idStr jointName = weaponDef->dict.GetString(va_format("%s_joint", name.c_str()));
 			newLight.joint = animator.GetJointHandle(jointName.c_str());
 
-			idStr shader = weaponDef->dict.GetString(va("%s_shader", name.c_str()));
+			idStr shader = weaponDef->dict.GetString(va_format("%s_shader", name.c_str()));
 			newLight.light.shader = declManager->FindMaterial( shader, false );
 
-			float radius = weaponDef->dict.GetFloat(va("%s_radius", name.c_str()));
+			float radius = weaponDef->dict.GetFloat(va_format("%s_radius", name.c_str()));
 			newLight.light.lightRadius[0] = newLight.light.lightRadius[1] = newLight.light.lightRadius[2] = radius;
 			newLight.light.pointLight = true;
 			newLight.light.noShadows = true;
@@ -1379,21 +1379,21 @@ void idWeapon::UpdateGUI() {
 		renderEntity.gui[ 0 ]->SetStateString( "player_ammo", "" );
 	} else {
 		// show remaining ammo
-		renderEntity.gui[ 0 ]->SetStateString( "player_totalammo", va( "%i", ammoamount) );
-		renderEntity.gui[ 0 ]->SetStateString( "player_ammo", ClipSize() ? va( "%i", inclip ) : "--" );
-		renderEntity.gui[ 0 ]->SetStateString( "player_clips", ClipSize() ? va("%i", ammoamount / ClipSize()) : "--" );
+		renderEntity.gui[ 0 ]->SetStateString( "player_totalammo", va_format( "%i", ammoamount) );
+		renderEntity.gui[ 0 ]->SetStateString( "player_ammo", ClipSize() ? va_format( "%i", inclip ) : "--" );
+		renderEntity.gui[ 0 ]->SetStateString( "player_clips", ClipSize() ? va_format("%i", ammoamount / ClipSize()) : "--" );
 
-		renderEntity.gui[ 0 ]->SetStateString( "player_allammo", va( "%i/%i", inclip, ammoamount ) );
+		renderEntity.gui[ 0 ]->SetStateString( "player_allammo", va_format( "%i/%i", inclip, ammoamount ) );
 	}
 	renderEntity.gui[ 0 ]->SetStateBool( "player_ammo_empty", ( ammoamount == 0 ) );
 	renderEntity.gui[ 0 ]->SetStateBool( "player_clip_empty", ( inclip == 0 ) );
 	renderEntity.gui[ 0 ]->SetStateBool( "player_clip_low", ( inclip <= lowAmmo ) );
 
 	//Let the HUD know the total amount of ammo regardless of the ammo required value
-	renderEntity.gui[ 0 ]->SetStateString( "player_ammo_count", va("%i", AmmoCount()));
+	renderEntity.gui[ 0 ]->SetStateString( "player_ammo_count", va_format("%i", AmmoCount()));
 
 	//Grabber Gui Info
-	renderEntity.gui[ 0 ]->SetStateString( "grabber_state", va("%i", grabberState));
+	renderEntity.gui[ 0 ]->SetStateString( "grabber_state", va_format("%i", grabberState));
 }
 
 /***********************************************************************
@@ -3889,7 +3889,7 @@ void idWeapon::Event_LaunchPowerup( const char* powerup, float duration, int use
 		MuzzleFlashLight();
 	}
 
-	owner->Give(powerup, va("%f", duration), ITEM_GIVE_FEEDBACK | ITEM_GIVE_UPDATE_STATE | ITEM_GIVE_FROM_WEAPON );
+	owner->Give(powerup, va_format("%f", duration), ITEM_GIVE_FEEDBACK | ITEM_GIVE_UPDATE_STATE | ITEM_GIVE_FROM_WEAPON );
 
 
 }
@@ -4055,7 +4055,7 @@ void idWeapon::Event_Melee() {
 					const char *materialType = gameLocal.sufaceTypeNames[ type ];
 
 					// start impact sound based on material type
-					hitSound = meleeDef->dict.GetString( va( "snd_%s", materialType ) );
+					hitSound = meleeDef->dict.GetString( va_format( "snd_%s", materialType ) );
 					if ( *hitSound == '\0' ) {
 						hitSound = meleeDef->dict.GetString( "snd_metal" );
 					}

@@ -263,7 +263,7 @@ int idSnapshotProcessor::GetPendingSnapDelta( byte * outBuffer, int maxLength ) 
 
 	if ( jobMemory->lzwInOutData.fullSnap ) {
 		// We sent the full snap, we can stop sending this pending snap now...
-		NET_VERBOSESNAPSHOT_PRINT_LEVEL( 5, va( "  wrote enough deltas to a full snapshot\n" ) ); // FIXME: peer number?
+		NET_VERBOSESNAPSHOT_PRINT_LEVEL( 5, va_format( "  wrote enough deltas to a full snapshot\n" ) ); // FIXME: peer number?
 
 		hasPendingSnap = false;
 		partialBaseSequence = -1;
@@ -376,7 +376,7 @@ We can remove all deltas that refer to the basetate we just removed.
 */
 bool idSnapshotProcessor::ApplySnapshotDelta( int visIndex, int snapshotNumber ) {
 
-	NET_VERBOSESNAPSHOT_PRINT_LEVEL( 6, va( "idSnapshotProcessor::ApplySnapshotDelta snapshotNumber: %d\n", snapshotNumber ) );
+	NET_VERBOSESNAPSHOT_PRINT_LEVEL( 6, va_format( "idSnapshotProcessor::ApplySnapshotDelta snapshotNumber: %d\n", snapshotNumber ) );
 
 	// Sanity check deltas
 	SanityCheckDeltas();

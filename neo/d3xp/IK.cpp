@@ -461,31 +461,31 @@ bool idIK_Walk::Init( idEntity *self, const char *anim, const idVec3 &modelOffse
 	// get all the joints
 	for ( i = 0; i < numLegs; i++ ) {
 
-		jointName = self->spawnArgs.GetString( va( "ik_foot%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_foot%d", i+1 ) );
 		footJoints[i] = animator->GetJointHandle( jointName );
 		if ( footJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Walk::Init: invalid foot joint '%s'", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_ankle%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_ankle%d", i+1 ) );
 		ankleJoints[i] = animator->GetJointHandle( jointName );
 		if ( ankleJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Walk::Init: invalid ankle joint '%s'", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_knee%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_knee%d", i+1 ) );
 		kneeJoints[i] = animator->GetJointHandle( jointName );
 		if ( kneeJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Walk::Init: invalid knee joint '%s'\n", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_hip%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_hip%d", i+1 ) );
 		hipJoints[i] = animator->GetJointHandle( jointName );
 		if ( hipJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Walk::Init: invalid hip joint '%s'\n", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_dir%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_dir%d", i+1 ) );
 		dirJoints[i] = animator->GetJointHandle( jointName );
 
 		enabledLegs |= 1 << i;
@@ -983,25 +983,25 @@ bool idIK_Reach::Init( idEntity *self, const char *anim, const idVec3 &modelOffs
 	// get all the joints
 	for ( i = 0; i < numArms; i++ ) {
 
-		jointName = self->spawnArgs.GetString( va( "ik_hand%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_hand%d", i+1 ) );
 		handJoints[i] = animator->GetJointHandle( jointName );
 		if ( handJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Reach::Init: invalid hand joint '%s'", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_elbow%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_elbow%d", i+1 ) );
 		elbowJoints[i] = animator->GetJointHandle( jointName );
 		if ( elbowJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Reach::Init: invalid elbow joint '%s'\n", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_shoulder%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_shoulder%d", i+1 ) );
 		shoulderJoints[i] = animator->GetJointHandle( jointName );
 		if ( shoulderJoints[i] == INVALID_JOINT ) {
 			gameLocal.Error( "idIK_Reach::Init: invalid shoulder joint '%s'\n", jointName );
 		}
 
-		jointName = self->spawnArgs.GetString( va( "ik_elbowDir%d", i+1 ) );
+		jointName = self->spawnArgs.GetString( va_format( "ik_elbowDir%d", i+1 ) );
 		dirJoints[i] = animator->GetJointHandle( jointName );
 
 		enabledArms |= 1 << i;

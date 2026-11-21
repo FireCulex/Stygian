@@ -578,7 +578,7 @@ idSWFScriptVar idSWFScriptFunction_Script::Run( idSWFScriptObject * thisObject, 
 				stack.A().SetInteger( stack.A().ToString()[0] );
 				break;
 			case Action_AsciiToChar:
-				stack.A().SetString( va( "%c", stack.A().ToInteger() ) );
+				stack.A().SetString( va_format( "%c", stack.A().ToInteger() ) );
 				break;
 			case Action_Jump:
 				bitstream.Seek( bitstream.ReadS16() );

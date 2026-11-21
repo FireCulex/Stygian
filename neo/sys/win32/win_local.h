@@ -129,16 +129,16 @@ typedef struct {
 	unsigned short	oldHardwareGamma[3][256];
 	// desktop gamma is saved here for restoration at exit
 
-	static idCVar	sys_arch;
-	static idCVar	sys_cpustring;
-	static idCVar	in_mouse;
-	static idCVar	win_allowAltTab;
-	static idCVar	win_notaskkeys;
-	static idCVar	win_username;
-	static idCVar	win_outputEditString;
-	static idCVar	win_viewlog;
-	static idCVar	win_timerUpdate;
-	static idCVar	win_allowMultipleInstances;
+idCVar	sys_arch;
+idCVar	sys_cpustring;
+idCVar	in_mouse;
+idCVar	win_allowAltTab;
+idCVar	win_notaskkeys;
+idCVar	win_username;
+idCVar	win_outputEditString;
+idCVar	win_viewlog;
+idCVar	win_timerUpdate;
+idCVar	win_allowMultipleInstances;
 
 	CRITICAL_SECTION criticalSections[MAX_CRITICAL_SECTIONS];
 

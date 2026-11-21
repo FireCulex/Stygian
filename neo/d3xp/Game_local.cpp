@@ -1495,6 +1495,7 @@ idGameLocal::MapShutdown
 ============
 */
 void idGameLocal::MapShutdown() {
+	Printf( "game->MapShutdown() called\n" );
 	Printf( "--------- Game Map Shutdown ----------\n" );
 	
 	gamestate = GAMESTATE_SHUTDOWN;
@@ -1550,6 +1551,8 @@ void idGameLocal::MapShutdown() {
 	gamestate = GAMESTATE_NOMAP;
 
 	Printf( "--------------------------------------\n" );
+	Printf( "MapShutdown completed\n" );
+	fflush(stdout);
 }
 
 /*
@@ -1728,7 +1731,7 @@ void idGameLocal::CacheDictionaryMedia( const idDict *dict ) {
 	kv = dict->MatchPrefix( "teleport", NULL );
 	if ( kv != NULL && kv->GetValue().Length() ) {
 		int teleportType = atoi( kv->GetValue() );
-		const char *p = ( teleportType ) ? va( "fx/teleporter%i.fx", teleportType ) : "fx/teleporter.fx";
+		const char *p = ( teleportType ) ? va_format( "fx/teleporter%i.fx", teleportType ) : "fx/teleporter.fx";
 		declManager->FindType( DECL_FX, p );
 	}
 
@@ -1889,7 +1892,7 @@ void idGameLocal::SpawnPlayer( int clientNum ) {
 	Printf( "SpawnPlayer: %i\n", clientNum );
 
 	args.SetInt( "spawn_entnum", clientNum );
-	args.Set( "name", va( "player%d", clientNum + 1 ) );
+	args.Set( "name", va_format( "player%d", clientNum + 1 ) );
 	if ( common->IsMultiplayer() ) {
 		args.Set( "classname", GetMPPlayerDefName() );
 	} else {
@@ -2865,7 +2868,7 @@ void idGameLocal::ShowTargets() {
 			idVec3 center = ent->GetPhysics()->GetAbsBounds().GetCenter();
 			gameRenderWorld->DrawText( ent->name.c_str(), center - up, 0.1f, colorWhite * frac, axis, 1 );
 			gameRenderWorld->DrawText( ent->GetEntityDefName(), center, 0.1f, colorWhite * frac, axis, 1 );
-			gameRenderWorld->DrawText( va( "#%d", ent->entityNumber ), center + up, 0.1f, colorWhite * frac, axis, 1 );
+			gameRenderWorld->DrawText( va_format( "#%d", ent->entityNumber ), center + up, 0.1f, colorWhite * frac, axis, 1 );
 		}
 
 		for( i = 0; i < ent->targets.Num(); i++ ) {
@@ -2930,7 +2933,7 @@ void idGameLocal::RunDebugInfo() {
 			}
 			if ( viewTextBounds.IntersectsBounds( entBounds ) ) {
 				gameRenderWorld->DrawText( ent->name.c_str(), entBounds.GetCenter(), 0.1f, colorWhite, axis, 1 );
-				gameRenderWorld->DrawText( va( "#%d", ent->entityNumber ), entBounds.GetCenter() + up, 0.1f, colorWhite, axis, 1 );
+				gameRenderWorld->DrawText( va_format( "#%d", ent->entityNumber ), entBounds.GetCenter() + up, 0.1f, colorWhite, axis, 1 );
 			}
 		}
 	}
@@ -3362,7 +3365,7 @@ idGameLocal::FindEntityDef
 const idDeclEntityDef *idGameLocal::FindEntityDef( const char *name, bool makeDefault ) const {
 	const idDecl *decl = NULL;
 	if ( common->IsMultiplayer() ) {
-		decl = declManager->FindType( DECL_ENTITYDEF, va( "%s_mp", name ), false );
+		decl = declManager->FindType( DECL_ENTITYDEF, va_format( "%s_mp", name ), false );
 	}
 	if ( !decl ) {
 		decl = declManager->FindType( DECL_ENTITYDEF, name, makeDefault );
@@ -3585,7 +3588,7 @@ void idGameLocal::ArgCompletion_EntityName( const idCmdArgs &args, void(*callbac
 
 	for( i = 0; i < gameLocal.num_entities; i++ ) {
 		if ( gameLocal.entities[ i ] ) {
-			callback( va( "%s %s", args.Argv( 0 ), gameLocal.entities[ i ]->name.c_str() ) );
+			callback( va_format( "%s %s", args.Argv( 0 ), gameLocal.entities[ i ]->name.c_str() ) );
 		}
 	}
 }
@@ -3826,7 +3829,7 @@ void idGameLocal::RadiusDamage( const idVec3 &origin, idEntity *inflictor, idEnt
 
 	damageDef->GetInt( "damage", "20", damage );
 	damageDef->GetInt( "radius", "50", radius );
-	damageDef->GetInt( "push", va( "%d", damage * 100 ), push );
+	damageDef->GetInt( "push", va_format( "%d", damage * 100 ), push );
 	damageDef->GetFloat( "attackerDamageScale", "0.5", attackerDamageScale );
 	damageDef->GetFloat( "attackerPushScale", "0", attackerPushScale );
 

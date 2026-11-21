@@ -27,11 +27,19 @@ If you have questions concerning this license or the applicable additional terms
 */
 
 
+#ifndef __SYS_SESSION_LOCAL_H__
+#define __SYS_SESSION_LOCAL_H__
+
 #undef private
 #undef protected
 
+#if defined(ID_PC_WIN)
 #include "win32/win_achievements.h"
 #include "win32/win_signin.h"
+#else
+// Linux/SDL stubs
+#include "sys/sdl/sdl_signin.h"
+#endif
 
 #include "sys_lobby_backend.h"
 #include "sys_lobby.h"
@@ -697,4 +705,6 @@ public:
 
 	idSessionLocal * sessionLocal;
 };
+
+#endif // __SYS_SESSION_LOCAL_H__
 

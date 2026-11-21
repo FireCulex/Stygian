@@ -334,7 +334,7 @@ idMultiplayerGame::UpdateRankColor
 */
 void idMultiplayerGame::UpdateRankColor( idUserInterface *gui, const char *mask, int i, const idVec3 &vec ) {
 	for ( int j = 1; j < 4; j++ ) {
-		gui->SetStateFloat( va( mask, i, j ), vec[ j - 1 ] );
+		gui->SetStateFloat( va_format( mask, i, j ), vec[ j - 1 ] );
 	}
 }
 
@@ -492,19 +492,19 @@ void idMultiplayerGame::UpdateScoreboard( idMenuHandler_Scoreboard * scoreboard,
 	} else {
 		if ( gameLocal.gameType == GAME_LASTMAN ) {
 			if ( gameState == GAMEON || gameState == SUDDENDEATH ) {
-				gameInfo = va( "%s: %i", idLocalization::GetString( "#str_04264" ), startFragLimit );
+				gameInfo = va_format( "%s: %i", idLocalization::GetString( "#str_04264" ), startFragLimit );
 			} else {
-				gameInfo = va( "%s: %i", idLocalization::GetString( "#str_04264" ), gameLocal.serverInfo.GetInt( "si_fragLimit" ) );
+				gameInfo = va_format( "%s: %i", idLocalization::GetString( "#str_04264" ), gameLocal.serverInfo.GetInt( "si_fragLimit" ) );
 			}
 		} else if ( gameLocal.gameType == GAME_CTF ) {
 			int captureLimit = gameLocal.serverInfo.GetInt( "si_fragLimit" );
-			gameInfo = va( idLocalization::GetString( "#str_11108" ), captureLimit );
+			gameInfo = va_format( idLocalization::GetString( "#str_11108" ), captureLimit );
 		} else {
-			gameInfo = va( "%s: %i", idLocalization::GetString( "#str_01982" ), gameLocal.serverInfo.GetInt( "si_fragLimit" ) );
+			gameInfo = va_format( "%s: %i", idLocalization::GetString( "#str_01982" ), gameLocal.serverInfo.GetInt( "si_fragLimit" ) );
 		}
 
 		if ( gameLocal.serverInfo.GetInt( "si_timeLimit" ) > 0 ) {
-			gameInfo.Append( va( "        %s: %i", idLocalization::GetString( "#str_01983" ), gameLocal.serverInfo.GetInt( "si_timeLimit" ) ) );
+			gameInfo.Append( va_format( "        %s: %i", idLocalization::GetString( "#str_01983" ), gameLocal.serverInfo.GetInt( "si_timeLimit" ) ) );
 		}
 	}
 
@@ -1716,7 +1716,7 @@ void idMultiplayerGame::GetSpectateText( idPlayer * player, idStr spectatetext[ 
 					spectatetext[ 0 ] += idLocalization::GetString( "#str_07005" );
 					break;
 				default:
-					spectatetext[ 0 ] += va( idLocalization::GetString( "#str_07006" ), player->tourneyLine );
+					spectatetext[ 0 ] += va_format( idLocalization::GetString( "#str_07006" ), player->tourneyLine );
 					break;
 				}
 
@@ -1738,7 +1738,7 @@ void idMultiplayerGame::GetSpectateText( idPlayer * player, idStr spectatetext[ 
 					spectatetext[ 0 ] += idLocalization::GetString( "#str_07005" );
 					break;
 				default:
-					spectatetext[ 0 ] += va( idLocalization::GetString( "#str_07006" ), player->tourneyLine );
+					spectatetext[ 0 ] += va_format( idLocalization::GetString( "#str_07006" ), player->tourneyLine );
 					break;
 			}
 		} else if ( gameLocal.gameType == GAME_LASTMAN ) {
@@ -1749,7 +1749,7 @@ void idMultiplayerGame::GetSpectateText( idPlayer * player, idStr spectatetext[ 
 	}
 	if ( player->spectator != player->entityNumber ) {
 		idLobbyBase & lobby = session->GetActingGameStateLobbyBase();
-		spectatetext[ 1 ] = va( idLocalization::GetString( "#str_07008" ), lobby.GetLobbyUserName( gameLocal.lobbyUserIDs[ player->spectator ] ) );
+		spectatetext[ 1 ] = va_format( idLocalization::GetString( "#str_07008" ), lobby.GetLobbyUserName( gameLocal.lobbyUserIDs[ player->spectator ] ) );
 	}
 }
 
@@ -2673,7 +2673,7 @@ void idMultiplayerGame::ProcessChatMessage( int clientNum, bool team, const char
 	// put the message together
 	outMsg.InitWrite( msgBuf, sizeof( msgBuf ) );
 	if ( prefix ) {
-		prefixed_name = va( "(%s) %s", prefix, name );
+		prefixed_name = va_format( "(%s) %s", prefix, name );
 	} else {
 		prefixed_name = name;
 	}

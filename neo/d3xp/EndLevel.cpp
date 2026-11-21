@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "Game_local.h"
+#include "EndLevel.h"
 
 /*
 
@@ -59,7 +60,7 @@ void idTarget_EndLevel::Spawn( void ) {
 		spawnArgs.GetString( "guiName", "guis/EndLevel.gui", guiName );
 
 		if (guiName.Length()) {
-			gui = idUserInterface::FindGui( guiName, true, false, true );
+			gui = uiManager->FindGui( guiName, true, false, true );
 		}
 	}
 
@@ -96,8 +97,8 @@ void idTarget_EndLevel::Event_Trigger( idEntity *activator ) {
 	// grab the activating player view position
 	idPlayer *player = (idPlayer *)(activator);
 
-	initialViewOrg = player->GetEyePosition();
-	initialViewAngles = idVec3( player->viewAngles[0], player->viewAngles[1], player->viewAngles[2] );
+	gameLocal.initialViewOrg = player->GetEyePosition();
+	gameLocal.initialViewAngles = idVec3( player->viewAngles[0], player->viewAngles[1], player->viewAngles[2] );
 
 	// kill all the sounds
 	gameSoundWorld->StopAllSounds();
@@ -109,8 +110,10 @@ void idTarget_EndLevel::Event_Trigger( idEntity *activator ) {
 
 /*
 ================
+/*
+==============
 idTarget_EndLevel::Draw
-================
+==============
 */
 void idTarget_EndLevel::Draw() {
 
@@ -122,18 +125,14 @@ void idTarget_EndLevel::Draw() {
 
 	memset( &renderView, 0, sizeof( renderView ) );
 
-	renderView.width = SCREEN_WIDTH;
-	renderView.height = SCREEN_HEIGHT;
-	renderView.x = 0;
-	renderView.y = 0;
-
 	renderView.fov_x = 90;
-	renderView.fov_y = gameLocal.CalcFovY( renderView.fov_x );
-	renderView.time = gameLocal.time;
+	gameLocal.CalcFov( renderView.fov_x, renderView.fov_x, renderView.fov_y );
+	renderView.time[0] = gameLocal.time;
+	renderView.time[1] = gameLocal.time;
 
 #if 0
-	renderView.vieworg = initialViewOrg;
-	renderView.viewaxis = idAngles(initialViewAngles).toMat3();
+	renderView.vieworg = gameLocal.initialViewOrg;
+	renderView.viewaxis = idAngles(gameLocal.initialViewAngles).toMat3();
 #else
 	renderView.vieworg = renderEntity.origin;
 	renderView.viewaxis = renderEntity.axis;

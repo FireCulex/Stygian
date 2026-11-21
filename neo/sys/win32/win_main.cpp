@@ -266,7 +266,7 @@ void Sys_Launch( const char * path, idCmdArgs & args,  void * data, unsigned int
 	ZeroMemory( &si, sizeof(si) );
 	si.cb = sizeof(si);
 
-	strcpy( szPathOrig, va( "\"%s\" %s", Sys_EXEPath(), (const char *)data ) );
+	strcpy( szPathOrig, va_format( "\"%s\" %s", Sys_EXEPath(), (const char *)data ) );
 
 	if ( !CreateProcess( NULL, szPathOrig, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi ) ) {
 		idLib::Error( "Could not start process: '%s' ", szPathOrig );
@@ -297,7 +297,7 @@ void Sys_ReLaunch( void * data, const unsigned int dataSize ) {
 	ZeroMemory( &si, sizeof(si) );
 	si.cb = sizeof(si);
 
-	strcpy( szPathOrig, va( "\"%s\" %s", Sys_EXEPath(), (const char *)data ) );
+	strcpy( szPathOrig, va_format( "\"%s\" %s", Sys_EXEPath(), (const char *)data ) );
 
 	CloseHandle( hProcessMutex );
 
@@ -720,7 +720,7 @@ bool Sys_Exec(	const char * appPath, const char * workingPath, const char * args
 		memset ( &pi, 0, sizeof( pi ) );
 
 		if ( outputFn != NULL ) {
-			outputFn( va( "^2Executing Process: ^7%s\n^2working path: ^7%s\n^2args: ^7%s\n", appPath, workingPath, args ) );
+			outputFn( va_format( "^2Executing Process: ^7%s\n^2working path: ^7%s\n^2args: ^7%s\n", appPath, workingPath, args ) );
 		} else {
 			outputFn = ExecOutputFn;
 		}

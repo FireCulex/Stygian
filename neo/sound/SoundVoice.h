@@ -28,6 +28,8 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __SOUNDVOICE_H__
 #define __SOUNDVOICE_H__
 
+#include "WaveFile.h"
+
 /*
 ================================================
 idSoundVoice_Base

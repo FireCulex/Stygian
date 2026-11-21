@@ -304,7 +304,7 @@ void idGameEdit::ParseSpawnArgsToRenderEntity( const idDict *args, renderEntity_
 
 	// init any guis, including entity-specific states
 	for( i = 0; i < MAX_RENDERENTITY_GUI; i++ ) {
-		temp = args->GetString( i == 0 ? "gui" : va( "gui%d", i + 1 ) );
+		temp = args->GetString( i == 0 ? "gui" : va_format( "gui%d", i + 1 ) );
 		if ( temp[ 0 ] != '\0' ) {
 			AddRenderGui( temp, &renderEntity->gui[ i ], args );
 		}
@@ -554,7 +554,7 @@ void idEntity::Spawn() {
 #endif
 
 	// every object will have a unique name
-	temp = spawnArgs.GetString( "name", va( "%s_%s_%d", GetClassname(), spawnArgs.GetString( "classname" ), entityNumber ) );
+	temp = spawnArgs.GetString( "name", va_format( "%s_%s_%d", GetClassname(), spawnArgs.GetString( "classname" ), entityNumber ) );
 	SetName( temp );
 
 	// if we have targets, wait until all entities are spawned to get them
@@ -3297,7 +3297,7 @@ void idEntity::AddDamageEffect( const trace_t &collision, const idVec3 &velocity
 	const char *materialType = gameLocal.sufaceTypeNames[ collision.c.material->GetSurfaceType() ];
 
 	// start impact sound based on material type
-	key = va( "snd_%s", materialType );
+	key = va_format( "snd_%s", materialType );
 	sound = spawnArgs.GetString( key );
 	if ( *sound == '\0' ) {
 		sound = def->dict.GetString( key );
@@ -3308,7 +3308,7 @@ void idEntity::AddDamageEffect( const trace_t &collision, const idVec3 &velocity
 
 	if ( g_decals.GetBool() ) {
 		// place a wound overlay on the model
-		key = va( "mtr_wound_%s", materialType );
+		key = va_format( "mtr_wound_%s", materialType );
 		decal = spawnArgs.RandomPrefix( key, gameLocal.random );
 		if ( *decal == '\0' ) {
 			decal = def->dict.RandomPrefix( key, gameLocal.random );
@@ -4553,7 +4553,7 @@ idEntity::Event_SetGuiParm
 void idEntity::Event_SetGuiFloat( const char *key, float f ) {
 	for ( int i = 0; i < MAX_RENDERENTITY_GUI; i++ ) {
 		if ( renderEntity.gui[ i ] ) {
-			renderEntity.gui[ i ]->SetStateString( key, va( "%f", f ) );
+			renderEntity.gui[ i ]->SetStateString( key, va_format( "%f", f ) );
 			renderEntity.gui[ i ]->StateChanged( gameLocal.time );
 		}
 	}
@@ -5470,8 +5470,18 @@ void idAnimatedEntity::UpdateAnimation() {
 
 	// get the latest frame bounds
 	animator.GetBounds( gameLocal.time, renderEntity.bounds );
-	if ( renderEntity.bounds.IsCleared() && !fl.hidden ) {
-		gameLocal.DPrintf( "%d: inside out bounds\n", gameLocal.time );
+	if ( renderEntity.bounds.IsCleared() ) {
+		// Some articulated entities (e.g. swinging AF lights) evaluate to cleared
+		// bounds every frame. Cleared bounds are "inside out", so they intersect
+		// every frustum plane and defeat culling entirely (massive overdraw, e.g.
+		// the mars_city2 vent spot) plus spam "inside out bounds". Fall back to
+		// the model's static bounds so the entity stays cullable.
+		if ( !fl.hidden ) {
+			gameLocal.DPrintf( "%d: inside out bounds\n", gameLocal.time );
+		}
+		if ( animator.ModelHandle() != NULL ) {
+			renderEntity.bounds = animator.ModelHandle()->Bounds();
+		}
 	}
 
 	// update the renderEntity
@@ -5636,7 +5646,7 @@ void idAnimatedEntity::AddLocalDamageEffect( jointHandle_t jointNum, const idVec
 	const char *materialType = gameLocal.sufaceTypeNames[ type ];
 
 	// start impact sound based on material type
-	key = va( "snd_%s", materialType );
+	key = va_format( "snd_%s", materialType );
 	sound = spawnArgs.GetString( key );
 	if ( *sound == '\0' ) {
 		sound = def->dict.GetString( key );
@@ -5646,7 +5656,7 @@ void idAnimatedEntity::AddLocalDamageEffect( jointHandle_t jointNum, const idVec
 	}
 
 	// blood splats are thrown onto nearby surfaces
-	key = va( "mtr_splat_%s", materialType );
+	key = va_format( "mtr_splat_%s", materialType );
 	splat = spawnArgs.RandomPrefix( key, gameLocal.random );
 	if ( *splat == '\0' ) {
 		splat = def->dict.RandomPrefix( key, gameLocal.random );
@@ -5658,7 +5668,7 @@ void idAnimatedEntity::AddLocalDamageEffect( jointHandle_t jointNum, const idVec
 	// can't see wounds on the player model in single player mode
 	if ( !( IsType( idPlayer::Type ) && !common->IsMultiplayer() ) ) {
 		// place a wound overlay on the model
-		key = va( "mtr_wound_%s", materialType );
+		key = va_format( "mtr_wound_%s", materialType );
 		decal = spawnArgs.RandomPrefix( key, gameLocal.random );
 		if ( *decal == '\0' ) {
 			decal = def->dict.RandomPrefix( key, gameLocal.random );
@@ -5669,7 +5679,7 @@ void idAnimatedEntity::AddLocalDamageEffect( jointHandle_t jointNum, const idVec
 	}
 
 	// a blood spurting wound is added
-	key = va( "smoke_wound_%s", materialType );
+	key = va_format( "smoke_wound_%s", materialType );
 	bleed = spawnArgs.GetString( key );
 	if ( *bleed == '\0' ) {
 		bleed = def->dict.GetString( key );

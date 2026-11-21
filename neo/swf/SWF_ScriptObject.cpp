@@ -367,13 +367,13 @@ idSWFScriptVar idSWFScriptObject::DefaultValue( bool stringHint ) {
 	switch ( objectType ) {
 	case SWF_OBJECT_OBJECT:
 		if ( swf_debugShowAddress.GetBool() ) {
-			return idSWFScriptVar( va( "[object:%p]", this ) );
+			return idSWFScriptVar( va_format( "[object:%p]", this ) );
 		} else {
 			return idSWFScriptVar( "[object]" );
 		}
 	case SWF_OBJECT_ARRAY:
 		if ( swf_debugShowAddress.GetBool() ) {
-			return idSWFScriptVar( va( "[array:%p]", this ) );
+			return idSWFScriptVar( va_format( "[array:%p]", this ) );
 		} else {
 			return idSWFScriptVar( "[array]" );
 		}
@@ -382,14 +382,14 @@ idSWFScriptVar idSWFScriptObject::DefaultValue( bool stringHint ) {
 			if ( data.sprite->parent == NULL ) {
 				return idSWFScriptVar( "[_root]" );
 			} else {
-				return idSWFScriptVar( va( "[%s]", data.sprite->GetName() ) );
+				return idSWFScriptVar( va_format( "[%s]", data.sprite->GetName() ) );
 			}
 		} else {
 			return idSWFScriptVar( "[NULL]" );
 		}
 	case SWF_OBJECT_TEXT:
 		if ( swf_debugShowAddress.GetBool() ) {
-			return idSWFScriptVar( va( "[edittext:%p]", this ) );
+			return idSWFScriptVar( va_format( "[edittext:%p]", this ) );
 		} else {
 			return idSWFScriptVar( "[edittext]" );
 		}
@@ -412,7 +412,7 @@ idSWFScriptObject::swfNamedVar_t * idSWFScriptObject::GetVariable( int index, bo
 		swfNamedVar_t * variable = &variables.Alloc();
 		variable->flags = SWF_VAR_FLAG_NONE;
 		variable->index = index;
-		variable->name = va( "%d", index );
+		variable->name = va_format( "%d", index );
 		variable->native = NULL;
 		int hash = idStr::Hash( variable->name ) & ( VARIABLE_HASH_BUCKETS - 1 );
 		variable->hashNext = variablesHash[hash];
@@ -566,7 +566,7 @@ void idSWFScriptObject::PrintToConsole() const {
 
 		maxVarLength += 2;	// a little extra padding
 
-		const char * const fmt = va( "%%-%ds %%-10s %%-s\n", maxVarLength );
+		const char * const fmt = va_format( "%%-%ds %%-10s %%-s\n", maxVarLength );
 		idLib::Printf( fmt, "Name", "Type", "Value" );
 		idLib::Printf( "------------------------------------------------------------\n" );
 		for ( int i = 0; i < variables.Num(); ++i ) {

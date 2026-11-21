@@ -32,7 +32,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../Game_local.h"
 
-#include "TypeInfo.h"
+#include "Class.h"
 
 /*
 ==================
@@ -749,6 +749,48 @@ void Cmd_Teleport_f( const idCmdArgs &args ) {
 
 /*
 =================
+Cmd_SetPos_f
+
+Linux port debug aid: teleport the local player to exact coordinates.
+usage: setpos <x> <y> <z> [yaw pitch roll]
+=================
+*/
+void Cmd_SetPos_f( const idCmdArgs &args ) {
+	idVec3		origin;
+	idAngles	angles;
+	idPlayer	*player;
+
+	player = gameLocal.GetLocalPlayer();
+	if ( !player || !gameLocal.CheatsOk() ) {
+		return;
+	}
+
+	if ( args.Argc() < 4 ) {
+		gameLocal.Printf( "usage: setpos <x> <y> <z> [yaw pitch roll]\n" );
+		return;
+	}
+
+	origin.x = atof( args.Argv( 1 ) );
+	origin.y = atof( args.Argv( 2 ) );
+	origin.z = atof( args.Argv( 3 ) );
+
+	angles.Zero();
+	if ( args.Argc() >= 5 ) {
+		angles.yaw = atof( args.Argv( 4 ) );
+	}
+	if ( args.Argc() >= 6 ) {
+		angles.pitch = atof( args.Argv( 5 ) );
+	}
+	if ( args.Argc() >= 7 ) {
+		angles.roll = atof( args.Argv( 6 ) );
+	}
+
+	player->Teleport( origin, angles, NULL );
+	gameLocal.Printf( "setpos: %.2f %.2f %.2f yaw %.1f\n", origin.x, origin.y, origin.z, angles.yaw );
+}
+
+/*
+=================
 Cmd_Trigger_f
 =================
 */
@@ -806,7 +848,7 @@ void Cmd_Spawn_f( const idCmdArgs &args ) {
 
 	value = args.Argv( 1 );
 	dict.Set( "classname", value );
-	dict.Set( "angle", va( "%f", yaw + 180 ) );
+	dict.Set( "angle", va_format( "%f", yaw + 180 ) );
 
 	org = player->GetPhysics()->GetOrigin() + idAngles( 0, yaw, 0 ).ToForward() * 80 + idVec3( 0, 0, 1 );
 	dict.Set( "origin", org.ToString() );
@@ -920,7 +962,7 @@ void Cmd_TestLight_f( const idCmdArgs &args ) {
 	}
 
 	for ( i = 0; i < MAX_GENTITIES; i++ ) {
-		name = va( "spawned_light_%d", i );		// not just light_, or it might pick up a prelight shadow
+		name = va_format( "spawned_light_%d", i );		// not just light_, or it might pick up a prelight shadow
 		if ( !gameLocal.FindEntity( name ) ) {
 			break;
 		}
@@ -967,7 +1009,7 @@ void Cmd_TestPointLight_f( const idCmdArgs &args ) {
 	}
 
 	for ( i = 0; i < MAX_GENTITIES; i++ ) {
-		name = va( "light_%d", i );
+		name = va_format( "light_%d", i );
 		if ( !gameLocal.FindEntity( name ) ) {
 			break;
 		}
@@ -1570,7 +1612,7 @@ static void Cmd_SaveSelected_f( const idCmdArgs &args ) {
 		mapEnt = new (TAG_SYSTEM) idMapEntity();
 		mapFile->AddEntity( mapEnt );
 		for ( i = 0; i < 9999; i++ ) {
-			name = va( "%s_%d", s->GetEntityDefName(), i );
+			name = va_format( "%s_%d", s->GetEntityDefName(), i );
 			if ( !gameLocal.FindEntity( name ) ) {
 				break;
 			}
@@ -1678,7 +1720,7 @@ static void Cmd_SaveMoveables_f( const idCmdArgs &args ) {
 			mapEnt = new (TAG_SYSTEM) idMapEntity();
 			mapFile->AddEntity( mapEnt );
 			for ( i = 0; i < 9999; i++ ) {
-				name = va( "%s_%d", m->GetEntityDefName(), i );
+				name = va_format( "%s_%d", m->GetEntityDefName(), i );
 				if ( !gameLocal.FindEntity( name ) ) {
 					break;
 				}
@@ -1751,7 +1793,7 @@ static void Cmd_SaveRagdolls_f( const idCmdArgs &args ) {
 			mapEnt = new (TAG_SYSTEM) idMapEntity();
 			mapFile->AddEntity( mapEnt );
 			for ( i = 0; i < 9999; i++ ) {
-				name = va( "%s_%d", af->GetEntityDefName(), i );
+				name = va_format( "%s_%d", af->GetEntityDefName(), i );
 				if ( !gameLocal.FindEntity( name ) ) {
 					break;
 				}
@@ -1856,7 +1898,7 @@ static void Cmd_SaveLights_f( const idCmdArgs &args ) {
 			mapEnt = new (TAG_SYSTEM) idMapEntity();
 			mapFile->AddEntity( mapEnt );
 			for ( i = 0; i < 9999; i++ ) {
-				name = va( "%s_%d", light->GetEntityDefName(), i );
+				name = va_format( "%s_%d", light->GetEntityDefName(), i );
 				if ( !gameLocal.FindEntity( name ) ) {
 					break;
 				}
@@ -2312,6 +2354,7 @@ void idGameLocal::InitConsoleCommands() {
 	cmdSystem->AddCommand( "getviewpos",			Cmd_GetViewpos_f,			CMD_FL_GAME|CMD_FL_CHEAT,	"prints the current view position" );
 	cmdSystem->AddCommand( "setviewpos",			Cmd_SetViewpos_f,			CMD_FL_GAME|CMD_FL_CHEAT,	"sets the current view position" );
 	cmdSystem->AddCommand( "teleport",				Cmd_Teleport_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"teleports the player to an entity location", idGameLocal::ArgCompletion_EntityName );
+	cmdSystem->AddCommand( "setpos",				Cmd_SetPos_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"teleport player to x y z [yaw pitch roll] (Linux debug)" );
 	cmdSystem->AddCommand( "trigger",				Cmd_Trigger_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"triggers an entity", idGameLocal::ArgCompletion_EntityName );
 	cmdSystem->AddCommand( "spawn",					Cmd_Spawn_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"spawns a game entity", idCmdSystem::ArgCompletion_Decl<DECL_ENTITYDEF> );
 	cmdSystem->AddCommand( "damage",				Cmd_Damage_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"apply damage to an entity", idGameLocal::ArgCompletion_EntityName );

@@ -131,7 +131,7 @@ public:
 		}
 	}
 
-	virtual const char *c_str() const {return va("%i", data); }
+	virtual const char *c_str() const {return va_format("%i", data); }
 
 	// SaveGames
 	virtual void WriteToSaveGame( idFile *savefile ) {
@@ -296,7 +296,7 @@ public:
 		}
 	}
 	virtual const char *c_str() const {
-		return va("%i", data);
+		return va_format("%i", data);
 	}
 
 	// SaveGames
@@ -354,7 +354,7 @@ public:
 		}
 	}
 	virtual const char *c_str() const {
-		return va("%f", data);
+		return va_format("%f", data);
 	}
 
 	virtual void WriteToSaveGame( idFile *savefile ) {

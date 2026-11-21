@@ -125,7 +125,7 @@ public:
 	void					RestoreObjects();
 	void					DeleteObjects();
 
-	void					Error( VERIFY_FORMAT_STRING const char *fmt, ... );
+	void					Error( const char *fmt, ... );
 
 	void					Read( void *buffer, int len );
 	void					ReadInt( int &value );

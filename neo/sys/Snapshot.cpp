@@ -66,7 +66,7 @@ void idSnapShot::objectState_t::Print( const char * name ) {
 	unsigned int start = (unsigned int)net_ssTemplateDebug_start.GetInteger();
 	unsigned int end = Min( (unsigned int)buffer.Size(), start + net_ssTemplateDebug_len.GetInteger() );
 
-	PrintAlign( va( "%s: [sz %d]", name, buffer.Size() ) );
+	PrintAlign( va_format( "%s: [sz %d]", name, buffer.Size() ) );
 
 	for ( unsigned int i = start; i < end; i++ ) {
 		idLib::Printf( "%02X", buffer[i] );

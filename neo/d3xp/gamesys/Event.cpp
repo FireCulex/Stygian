@@ -334,7 +334,7 @@ idEvent *idEvent::Alloc( const idEventDef *evdef, int numargs, va_list args ) {
 idEvent::CopyArgs
 ================
 */
-void idEvent::CopyArgs( const idEventDef *evdef, int numargs, va_list args, int data[ D_EVENT_MAXARGS ] ) {
+void idEvent::CopyArgs( const idEventDef *evdef, int numargs, va_list args, intptr_t data[ D_EVENT_MAXARGS ] ) {
 	int			i;
 	const char	*format;
 	idEventArg	*arg;
@@ -353,6 +353,8 @@ void idEvent::CopyArgs( const idEventDef *evdef, int numargs, va_list args, int 
 			}
 		}
 
+		// data[] slots are intptr_t: store the full pointer width (idEventArg::value
+		// is intptr_t); ProcessEventArgPtr reads pointer args back as full pointers
 		data[ i ] = arg->value;
 	}
 }
@@ -489,7 +491,7 @@ idEvent::ServiceEvents
 void idEvent::ServiceEvents() {
 	idEvent		*event;
 	int			num;
-	int			args[ D_EVENT_MAXARGS ];
+	intptr_t		args[ D_EVENT_MAXARGS ];
 	int			offset;
 	int			i;
 	int			numargs;
@@ -590,7 +592,7 @@ idEvent::ServiceFastEvents
 void idEvent::ServiceFastEvents() {
 	idEvent	*event;
 	int		num;
-	int			args[ D_EVENT_MAXARGS ];
+	intptr_t		args[ D_EVENT_MAXARGS ];
 	int			offset;
 	int			i;
 	int			numargs;
@@ -1038,10 +1040,10 @@ void CreateEventCallbackHandler() {
 			for( k = 0; k < i; k++ ) {
 				if ( j & ( 1 << k ) ) {
 					string1 += "const float";
-					string2 += va( "*( float * )&data[ %d ]", k );
+					string2 += va_format( "*( float * )&data[ %d ]", k );
 				} else {
 					string1 += "void *";
-					string2 += va( "(void *)data[ %d ]", k );
+					string2 += va_format( "(void *)data[ %d ]", k );
 				}
 
 				if ( k < i - 1 ) {

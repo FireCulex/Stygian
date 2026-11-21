@@ -125,6 +125,14 @@ void idSysLocal::DLL_GetFileName( const char *baseName, char *dllName, int maxLe
 	idStr::snPrintf( dllName, maxLength, "%s" CPUSTRING ".dll", baseName );
 }
 
+void idSysLocal::OpenURL( const char *url, bool quit ) {
+	// Implemented in platform-specific derived class
+}
+
+void idSysLocal::StartProcess( const char *exeName, bool quit ) {
+	// Implemented in platform-specific derived class
+}
+
 sysEvent_t idSysLocal::GenerateMouseButtonEvent( int button, bool down ) {
 	sysEvent_t ev;
 	ev.evType = SE_KEY;
@@ -169,21 +177,21 @@ const char *Sys_TimeStampToStr( ID_TIME_T timeStamp ) {
 	idStr lang = cvarSystem->GetCVarString( "sys_lang" );
 	if ( lang.Icmp( ID_LANG_ENGLISH ) == 0 ) {
 		// english gets "month/day/year  hour:min" + "am" or "pm"
-		out = va( "%02d", time->tm_mon + 1 );
+		out = va_format( "%02d", time->tm_mon + 1 );
 		out += "/";
-		out += va( "%02d", time->tm_mday );
+		out += va_format( "%02d", time->tm_mday );
 		out += "/";
-		out += va( "%d", time->tm_year + 1900 );
+		out += va_format( "%d", time->tm_year + 1900 );
 		out += " ";	// changed to spaces since flash doesn't recognize \t
 		if ( time->tm_hour > 12 ) {
-			out += va( "%02d", time->tm_hour - 12 );
+			out += va_format( "%02d", time->tm_hour - 12 );
 		} else if ( time->tm_hour == 0 ) {
 				out += "12";
 		} else {
-			out += va( "%02d", time->tm_hour );
+			out += va_format( "%02d", time->tm_hour );
 		}
 		out += ":";
-		out +=va( "%02d", time->tm_min );
+		out +=va_format( "%02d", time->tm_min );
 		if ( time->tm_hour >= 12 ) {
 			out += "pm";
 		} else {
@@ -191,15 +199,15 @@ const char *Sys_TimeStampToStr( ID_TIME_T timeStamp ) {
 		}
 	} else {
 		// europeans get "day/month/year  24hour:min"
-		out = va( "%02d", time->tm_mday );
+		out = va_format( "%02d", time->tm_mday );
 		out += "/";
-		out += va( "%02d", time->tm_mon + 1 );
+		out += va_format( "%02d", time->tm_mon + 1 );
 		out += "/";
-		out += va( "%d", time->tm_year + 1900 );
+		out += va_format( "%d", time->tm_year + 1900 );
 		out += " ";	// changed to spaces since flash doesn't recognize \t
-		out += va( "%02d", time->tm_hour );
+		out += va_format( "%02d", time->tm_hour );
 		out += ":";
-		out += va( "%02d", time->tm_min );
+		out += va_format( "%02d", time->tm_min );
 	}
 	idStr::Copynz( timeString, out, sizeof( timeString ) );
 

@@ -221,12 +221,12 @@ const char *idListWindow::HandleEvent(const sysEvent_t *event, bool *updateVisua
 
 	if ( currentSel.Num() > 0 ) {
 		for ( int i = 0; i < currentSel.Num(); i++ ) {
-			gui->SetStateInt( va( "%s_sel_%i", listName.c_str(), i ), currentSel[i] );
+			gui->SetStateInt( va_format( "%s_sel_%i", listName.c_str(), i ), currentSel[i] );
 		}
 	} else {
-		gui->SetStateInt( va( "%s_sel_0", listName.c_str() ), 0 );
+		gui->SetStateInt( va_format( "%s_sel_0", listName.c_str() ), 0 );
 	}
-	gui->SetStateInt( va( "%s_numsel", listName.c_str() ), currentSel.Num() );
+	gui->SetStateInt( va_format( "%s_numsel", listName.c_str() ), currentSel.Num() );
 
 	return ret;
 }
@@ -582,7 +582,7 @@ void idListWindow::UpdateList() {
 	idStr str, strName;
 	listItems.Clear();
 	for (int i = 0; i < MAX_LIST_ITEMS; i++) {
-		if (gui->State().GetString( va("%s_item_%i", listName.c_str(), i), "", str) ) {
+		if (gui->State().GetString( va_format("%s_item_%i", listName.c_str(), i), "", str) ) {
 			if ( str.Length() ) {
 				listItems.Append(str);
 			}
@@ -598,7 +598,7 @@ void idListWindow::UpdateList() {
 		scroller->SetRange(0.0f, (listItems.Num() - fit) + 1.0f, 1.0f);
 	}
 
-	SetCurrentSel( gui->State().GetInt( va( "%s_sel_0", listName.c_str() ) ) );
+	SetCurrentSel( gui->State().GetInt( va_format( "%s_sel_0", listName.c_str() ) ) );
 
 	float value = scroller->GetValue();
 	if ( value > listItems.Num() - 1 ) {

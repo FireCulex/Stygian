@@ -68,7 +68,7 @@ void idAASLocal::DrawReachability( const idReachability *reach ) const {
 	gameRenderWorld->DebugArrow( colorCyan, reach->start, reach->end, 2 );
 
 	if ( gameLocal.GetLocalPlayer() ) {
-		gameRenderWorld->DrawText( va( "%d", reach->edgeNum ), ( reach->start + reach->end ) * 0.5f, 0.1f, colorWhite, gameLocal.GetLocalPlayer()->viewAxis );
+		gameRenderWorld->DrawText( va_format( "%d", reach->edgeNum ), ( reach->start + reach->end ) * 0.5f, 0.1f, colorWhite, gameLocal.GetLocalPlayer()->viewAxis );
 	}
 
 	switch( reach->travelType ) {
@@ -104,7 +104,7 @@ void idAASLocal::DrawEdge( int edgeNum, bool arrow ) const {
 	}
 
 	if ( gameLocal.GetLocalPlayer() ) {
-		gameRenderWorld->DrawText( va( "%d", edgeNum ), ( file->GetVertex( edge->vertexNum[0] ) + file->GetVertex( edge->vertexNum[1] ) ) * 0.5f + idVec3(0,0,4), 0.1f, colorRed, gameLocal.GetLocalPlayer()->viewAxis );
+		gameRenderWorld->DrawText( va_format( "%d", edgeNum ), ( file->GetVertex( edge->vertexNum[0] ) + file->GetVertex( edge->vertexNum[1] ) ) * 0.5f + idVec3(0,0,4), 0.1f, colorRed, gameLocal.GetLocalPlayer()->viewAxis );
 	}
 }
 
@@ -348,7 +348,7 @@ void idAASLocal::ShowWallEdges( const idVec3 &origin ) const {
 	for ( i = 0; i < numEdges; i++ ) {
 		GetEdge( edges[i], start, end );
 		gameRenderWorld->DebugLine( colorRed, start, end );
-		gameRenderWorld->DrawText( va( "%d", edges[i] ), ( start + end ) * 0.5f, 0.1f, colorWhite, player->viewAxis );
+		gameRenderWorld->DrawText( va_format( "%d", edges[i] ), ( start + end ) * 0.5f, 0.1f, colorWhite, player->viewAxis );
 	}
 }
 

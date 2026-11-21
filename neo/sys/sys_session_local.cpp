@@ -28,6 +28,11 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 #include "../idlib/precompiled.h"
 #include "sys_session_local.h"
+
+#ifndef ID_SINGLEPLAYER_ONLY
+#define ID_SINGLEPLAYER_ONLY
+#endif
+#include "sys/sdl/sdl_session_local.h"
 #include "sys_voicechat.h"
 #include "sys_dedicated_server_search.h"
 

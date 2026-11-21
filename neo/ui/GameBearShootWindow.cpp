@@ -776,12 +776,12 @@ void idGameBearShootWindow::UpdateScore() {
 	}
 
 	goalsHit++;
-	gui->SetStateString( "player_score", va("%i", goalsHit ) );
+	gui->SetStateString( "player_score", va_format("%i", goalsHit ) );
 
 	// Check for level progression
 	if ( !(goalsHit % 5) ) {
 		currentLevel++;
-		gui->SetStateString( "current_level", va("%i", currentLevel ) );
+		gui->SetStateString( "current_level", va_format("%i", currentLevel ) );
 		common->SW()->PlayShaderDirectly( "arcade_levelcomplete1", 3 );
 
 		timeRemaining += 30;
@@ -878,7 +878,7 @@ void idGameBearShootWindow::UpdateGame() {
 		// Update countdown timer
 		timeRemaining -= timeSlice;
 		timeRemaining = idMath::ClampFloat( 0.f, 99999.f, timeRemaining );
-		gui->SetStateString( "time_remaining", va("%2.1f", timeRemaining ) );
+		gui->SetStateString( "time_remaining", va_format("%2.1f", timeRemaining ) );
 
 		if ( timeRemaining <= 0.f && !gameOver ) {
 			gameOver = true;

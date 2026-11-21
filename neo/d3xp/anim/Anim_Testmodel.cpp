@@ -762,7 +762,7 @@ void idTestModel::TestModel_f( const idCmdArgs &args ) {
 	offset = player->GetPhysics()->GetOrigin() + player->viewAngles.ToForward() * 100.0f;
 
 	dict.Set( "origin", offset.ToString() );
-	dict.Set( "angle", va( "%f", player->viewAngles.yaw + 180.0f ) );
+	dict.Set( "angle", va_format( "%f", player->viewAngles.yaw + 180.0f ) );
 	gameLocal.testmodel = ( idTestModel * )gameLocal.SpawnEntityType( idTestModel::Type, &dict );
 	gameLocal.testmodel->renderEntity.shaderParms[SHADERPARM_TIMEOFFSET] = -MS2SEC( gameLocal.time );
 }
@@ -825,7 +825,7 @@ void idTestModel::ArgCompletion_TestAnim( const idCmdArgs &args, void(*callback)
 	if ( gameLocal.testmodel ) {
 		idAnimator *animator = gameLocal.testmodel->GetAnimator();
 		for( int i = 0; i < animator->NumAnims(); i++ ) {
-			callback( va( "%s %s", args.Argv( 0 ), animator->AnimFullName( i ) ) );
+			callback( va_format( "%s %s", args.Argv( 0 ), animator->AnimFullName( i ) ) );
 		}
 	}
 }

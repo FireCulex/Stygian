@@ -126,7 +126,7 @@ bool idLobby::SendCompletedSnaps() {
 			// Check to see if there are any snaps that were submitted that need to be sent out
 			SendCompletedPendingSnap( p );
 		} else if ( IsHost()  ) {
-			NET_VERBOSESNAPSHOT_PRINT_LEVEL( 7, va("  ^8Peer %d pendingSnap not ready to send\n", p) );
+			NET_VERBOSESNAPSHOT_PRINT_LEVEL( 7, va_format("  ^8Peer %d pendingSnap not ready to send\n", p) );
 		}
 
 		if ( !peer.IsConnected() ) { // peer may have been dropped in "SendCompletedPendingSnap". ugh.
@@ -137,7 +137,7 @@ bool idLobby::SendCompletedSnaps() {
 			// If we still have a submitted snap, we know we're not done
 			sentAllSubmitted = false;
 			if ( IsHost() ) {
-				NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va("  ^2Peer %d did not send all submitted snapshots.\n", p) );
+				NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va_format("  ^2Peer %d did not send all submitted snapshots.\n", p) );
 			}
 		}
 	}
@@ -200,7 +200,7 @@ bool idLobby::SubmitPendingSnap( int p ) {
 	// Submit snapshot delta to jobs
 	peer.snapProc->SubmitPendingSnap( p + 1, objMemory, SNAP_OBJ_JOB_MEMORY, lzwData );
 
-	NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va("  Submitted snapshot to jobList for peer %d. Since last jobsub: %d\n", p, timeFromLastSub ) );
+	NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va_format("  Submitted snapshot to jobList for peer %d. Since last jobsub: %d\n", p, timeFromLastSub ) );
 	
 	return true;
 }
@@ -290,7 +290,7 @@ void idLobby::SendCompletedPendingSnap( int p ) {
 
 	if ( size != 0 ) {
 		if ( size > 0 ) {
-			NET_VERBOSESNAPSHOT_PRINT_LEVEL( 3, va("NET: (peer %d) Sending snapshot %d delta'd against %d. Since JobSub: %d Since LastSend: %d. Size: %d\n", p, peer.snapProc->GetSnapSequence(), peer.snapProc->GetBaseSequence(), timeFromJobSub, timeFromLastSend, size ) );
+			NET_VERBOSESNAPSHOT_PRINT_LEVEL( 3, va_format("NET: (peer %d) Sending snapshot %d delta'd against %d. Since JobSub: %d Since LastSend: %d. Size: %d\n", p, peer.snapProc->GetSnapSequence(), peer.snapProc->GetBaseSequence(), timeFromJobSub, timeFromLastSend, size ) );
 			ProcessOutgoingMsg( p, buffer, size, false, 0 );	
 		} else if ( size < 0 ) {	// Size < 0 indicates the delta buffer filled up
 			// There used to be code here that would disconnect peers if they were in game and filled up the buffer
@@ -513,7 +513,7 @@ void idLobby::SendSnapshotToPeer( idSnapShot & ss, int p ) {
 	if ( ( throttleMode == 1 || throttleMode == 3 ) && peer.throttledSnapRate > 0 ) {
 		if ( time - peer.lastSnapJobTime < peer.throttledSnapRate / 1000 ) { // fixme /1000
 			// This peer is throttled, skip his snap shot
-			NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va( "NET: Throttling peer %d.Skipping snapshot. Time elapsed: %d peer snap rate: %d\n", p, ( time - peer.lastSnapJobTime ), peer.throttledSnapRate ) );
+			NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va_format( "NET: Throttling peer %d.Skipping snapshot. Time elapsed: %d peer snap rate: %d\n", p, ( time - peer.lastSnapJobTime ), peer.throttledSnapRate ) );
 			return;
 		}
 	}
@@ -532,7 +532,7 @@ void idLobby::SendSnapshotToPeer( idSnapShot & ss, int p ) {
 	// TrySetPendingSnapshot won't do anything until the last snap set was fully sent out.
 
 	if ( peer.snapProc->TrySetPendingSnapshot( ss ) ) {
-		NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va("  ^8Set next pending snapshot peer %d\n", 0 ) );
+		NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va_format("  ^8Set next pending snapshot peer %d\n", 0 ) );
 
 		peer.numSnapsSent++;
 
@@ -542,7 +542,7 @@ void idLobby::SendSnapshotToPeer( idSnapShot & ss, int p ) {
 		}
 
 	} else {
-		NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va("  ^2FAILED Set next pending snapshot peer %d\n", 0 ) );
+		NET_VERBOSESNAPSHOT_PRINT_LEVEL( 2, va_format("  ^2FAILED Set next pending snapshot peer %d\n", 0 ) );
 	}
 
 	// We send out the pending snap, which could be the most recent, or an old one that hasn't fully been sent

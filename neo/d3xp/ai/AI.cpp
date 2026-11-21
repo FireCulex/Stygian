@@ -1213,7 +1213,7 @@ void idAI::Think() {
 
 	if(ai_showHealth.GetBool()) {
 		idVec3 aboveHead(0,0,20);
-		gameRenderWorld->DrawText( va( "%d", ( int )health), this->GetEyePosition()+aboveHead, 0.5f, colorWhite, gameLocal.GetLocalPlayer()->viewAngles.ToMat3() );
+		gameRenderWorld->DrawText( va_format( "%d", ( int )health), this->GetEyePosition()+aboveHead, 0.5f, colorWhite, gameLocal.GetLocalPlayer()->viewAngles.ToMat3() );
 	}
 }
 
@@ -1506,7 +1506,7 @@ float idAI::TravelDistance( const idVec3 &start, const idVec3 &end ) const {
 
 		if ( ai_debugMove.GetBool() ) {
 			gameRenderWorld->DebugLine( colorBlue, start, end, 1, false );
-			gameRenderWorld->DrawText( va( "%d", ( int )dist ), ( start + end ) * 0.5f, 0.1f, colorWhite, gameLocal.GetLocalPlayer()->viewAngles.ToMat3() );
+			gameRenderWorld->DrawText( va_format( "%d", ( int )dist ), ( start + end ) * 0.5f, 0.1f, colorWhite, gameLocal.GetLocalPlayer()->viewAngles.ToMat3() );
 		}
 
 		return dist;
@@ -1527,7 +1527,7 @@ float idAI::TravelDistance( const idVec3 &start, const idVec3 &end ) const {
 
 		if ( ai_debugMove.GetBool() ) {
 			gameRenderWorld->DebugLine( colorBlue, start, end, 1, false );
-			gameRenderWorld->DrawText( va( "%d", ( int )dist ), ( start + end ) * 0.5f, 0.1f, colorWhite, gameLocal.GetLocalPlayer()->viewAngles.ToMat3() );
+			gameRenderWorld->DrawText( va_format( "%d", ( int )dist ), ( start + end ) * 0.5f, 0.1f, colorWhite, gameLocal.GetLocalPlayer()->viewAngles.ToMat3() );
 		}
 
 		return dist;
@@ -3532,7 +3532,7 @@ void idAI::PlayCinematic() {
 	allowJointMod = false;
 	allowEyeFocus = false;
 
-	spawnArgs.GetString( va( "anim%d", current_cinematic ), NULL, &animname );
+	spawnArgs.GetString( va_format( "anim%d", current_cinematic ), NULL, &animname );
 	if ( !animname ) {
 		gameLocal.Warning( "missing 'anim%d' key on %s", current_cinematic, name.c_str() );
 		return;

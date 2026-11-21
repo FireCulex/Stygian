@@ -190,7 +190,7 @@ void idSoundSample_XAudio2::LoadResource() {
 
 	for ( int i = 0; i < 2; i++ ) {
 		idStrStatic< MAX_OSPATH > sampleName = GetName();
-		if ( ( i == 0 ) && !sampleName.Replace( "/vo/", va( "/vo/%s/", sys_lang.GetString() ) ) ) {
+		if ( ( i == 0 ) && !sampleName.Replace( "/vo/", va_format( "/vo/%s/", sys_lang.GetString() ) ) ) {
 			i++;
 		}
 		idStrStatic< MAX_OSPATH > generatedName = "generated/";
@@ -223,7 +223,7 @@ void idSoundSample_XAudio2::LoadResource() {
 							continue;
 						}
 						idStrStatic< MAX_OSPATH > locName = GetName();
-						locName.Replace( "/vo/", va( "/vo/%s/", Sys_Lang( i ) ) );
+						locName.Replace( "/vo/", va_format( "/vo/%s/", Sys_Lang( i ) ) );
 						WriteAllSamples( locName );
 					}
 				}

@@ -713,7 +713,7 @@ void idActor::SetupHead() {
 
 
 		headEnt = static_cast<idAFAttachment *>( gameLocal.SpawnEntityType( idAFAttachment::Type, &args ) );
-		headEnt->SetName( va( "%s_head", name.c_str() ) );
+		headEnt->SetName( va_format( "%s_head", name.c_str() ) );
 		headEnt->SetBody( this, headModel, damageJoint );
 		head = headEnt;
 
@@ -2072,7 +2072,7 @@ int idActor::GetAnim( int channel, const char *animname ) {
 	}
 
 	if ( animPrefix.Length() ) {
-		temp = va( "%s_%s", animPrefix.c_str(), animname );
+		temp = va_format( "%s_%s", animPrefix.c_str(), animname );
 		anim = animatorPtr->GetAnim( temp );
 		if ( anim ) {
 			return anim;
@@ -2553,7 +2553,7 @@ void idActor::PlayFootStepSound() {
 	// start footstep sound based on material type
 	material = GetPhysics()->GetContact( 0 ).material;
 	if ( material != NULL ) {
-		sound = spawnArgs.GetString( va( "snd_footstep_%s", gameLocal.sufaceTypeNames[ material->GetSurfaceType() ] ) );
+		sound = spawnArgs.GetString( va_format( "snd_footstep_%s", gameLocal.sufaceTypeNames[ material->GetSurfaceType() ] ) );
 	}
 	if ( sound != NULL && *sound == '\0' ) {
 		sound = spawnArgs.GetString( "snd_footstep" );

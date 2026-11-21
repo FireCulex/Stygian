@@ -29,7 +29,17 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __SYS_PUBLIC__
 #define __SYS_PUBLIC__
 
+#include "idlib/sys/sys_defines.h"
 #include "../idlib/CmdArgs.h"
+
+// Linux type definitions (for cross-platform compatibility)
+#ifndef HANDLE
+typedef void* HANDLE;
+#endif
+
+#ifndef ID_TIME_T
+typedef int64_t ID_TIME_T;
+#endif
 
 /*
 ===============================================================================
@@ -531,7 +541,9 @@ void			Sys_ShowConsole( int visLevel, bool quitOnClose );
 
 // This really isn't the right place to have this, but since this is the 'top level' include
 // and has a function signature with 'FILE' in it, it kinda needs to be here =/
+#ifndef idFileHandle
 typedef HANDLE idFileHandle;
+#endif
 
 
 ID_TIME_T		Sys_FileTimeStamp( idFileHandle fp );

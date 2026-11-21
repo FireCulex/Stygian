@@ -910,7 +910,7 @@ void idAFEntity_Base::DropAFs( idEntity *ent, const char *type, idList<idEntity 
 	const idDeclSkin *skin;
 
 	// drop the articulated figures
-	kv = ent->spawnArgs.MatchPrefix( va( "def_drop%sAF", type ), NULL );
+	kv = ent->spawnArgs.MatchPrefix( va_format( "def_drop%sAF", type ), NULL );
 	while ( kv ) {
 
 		args.Set( "classname", kv->GetValue() );
@@ -926,11 +926,11 @@ void idAFEntity_Base::DropAFs( idEntity *ent, const char *type, idList<idEntity 
 			}
 		}
 
-		kv = ent->spawnArgs.MatchPrefix( va( "def_drop%sAF", type ), kv );
+		kv = ent->spawnArgs.MatchPrefix( va_format( "def_drop%sAF", type ), kv );
 	}
 
 	// change the skin to hide all the dropped articulated figures
-	skinName = ent->spawnArgs.GetString( va( "skin_drop%s", type ) );
+	skinName = ent->spawnArgs.GetString( va_format( "skin_drop%s", type ) );
 	if ( skinName[0] ) {
 		skin = declManager->FindSkin( skinName );
 		ent->SetSkin( skin );
@@ -1483,7 +1483,7 @@ void idAFEntity_WithAttachedHead::SetupHead() {
 		}
 
 		headEnt = static_cast<idAFAttachment *>( gameLocal.SpawnEntityType( idAFAttachment::Type, NULL ) );
-		headEnt->SetName( va( "%s_head", name.c_str() ) );
+		headEnt->SetName( va_format( "%s_head", name.c_str() ) );
 		headEnt->SetBody( this, headModel, joint );
 		headEnt->SetCombatModel();
 		head = headEnt;
@@ -1832,7 +1832,7 @@ void idAFEntity_VehicleSimple::Spawn() {
 		origin = renderEntity.origin + origin * renderEntity.axis;
 
 		suspension[i] = new (TAG_PHYSICS_AF) idAFConstraint_Suspension();
-		suspension[i]->Setup( va( "suspension%d", i ), af.GetPhysics()->GetBody( 0 ), origin, af.GetPhysics()->GetAxis( 0 ), wheelModel );
+		suspension[i]->Setup( va_format( "suspension%d", i ), af.GetPhysics()->GetBody( 0 ), origin, af.GetPhysics()->GetAxis( 0 ), wheelModel );
 		suspension[i]->SetSuspension(	g_vehicleSuspensionUp.GetFloat(),
 										g_vehicleSuspensionDown.GetFloat(),
 										g_vehicleSuspensionKCompress.GetFloat(),
@@ -2811,7 +2811,7 @@ bool idGameEdit::AF_SpawnEntity( const char *fileName ) {
 	}
 
 	yaw = player->viewAngles.yaw;
-	args.Set( "angle", va( "%f", yaw + 180 ) );
+	args.Set( "angle", va_format( "%f", yaw + 180 ) );
 	org = player->GetPhysics()->GetOrigin() + idAngles( 0, yaw, 0 ).ToForward() * 80 + idVec3( 0, 0, 1 );
 	args.Set( "origin", org.ToString() );
 	args.Set( "spawnclass", "idAFEntity_Generic" );

@@ -1521,7 +1521,12 @@ idVarDef *idCompiler::GetExpression( int priority ) {
 				if ( ( statement.op >= OP_INDIRECT_F ) && ( statement.op < OP_ADDRESS ) ) {
 					statement.op = OP_ADDRESS;
 					type_pointer.SetPointerType( e->TypeDef() );
-					e->SetTypeDef( &type_pointer );
+					// LP64: the VM stores a full varEval_t (pointer-sized) in pointer
+					// temps, but the indirect's result temp was allocated with the
+					// pointee's size (4 bytes for entity/object) — allocate a fresh
+					// pointer-sized temp instead of retyping the undersized one.
+					e = gameLocal.program.AllocDef( &type_pointer, RESULT_STRING, scope, false );
+					statement.c = e;
 				}
 			}
 
@@ -2050,7 +2055,7 @@ void idCompiler::ParseObjectDef( const char *objname ) {
 		fieldtype = ParseType();
 		newtype.SetFieldType( fieldtype );
 
-		fieldname = va( "%s field", fieldtype->Name() );
+		fieldname = va_format( "%s field", fieldtype->Name() );
 		newtype.SetName( fieldname );
 
 		ParseName( name );
@@ -2180,7 +2185,7 @@ void idCompiler::ParseFunctionDef( idTypeDef *returnType, const char *name ) {
 
 		// find the superclass constructor
 		for( superClass = oldscope->TypeDef()->SuperClass(); superClass != &type_object; superClass = superClass->SuperClass() ) {
-			constructorFunc = gameLocal.program.FindFunction( va( "%s::init", superClass->Name() ) );
+			constructorFunc = gameLocal.program.FindFunction( va_format( "%s::init", superClass->Name() ) );
 			if ( constructorFunc ) {
 				break;
 			}
@@ -2207,7 +2212,7 @@ void idCompiler::ParseFunctionDef( idTypeDef *returnType, const char *name ) {
 
 		// find the superclass destructor
 		for( superClass = oldscope->TypeDef()->SuperClass(); superClass != &type_object; superClass = superClass->SuperClass() ) {
-			destructorFunc = gameLocal.program.FindFunction( va( "%s::destroy", superClass->Name() ) );
+			destructorFunc = gameLocal.program.FindFunction( va_format( "%s::destroy", superClass->Name() ) );
 			if ( destructorFunc ) {
 				break;
 			}

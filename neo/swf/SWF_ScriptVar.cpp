@@ -210,16 +210,16 @@ idStr idSWFScriptVar::ToString() const {
 		case SWF_VAR_STRINGID:	return idStrId( value.i ).GetLocalizedString();
 		case SWF_VAR_STRING:	return *value.string;
 
-		case SWF_VAR_FLOAT:		return va( "%g", value.f );
+		case SWF_VAR_FLOAT:		return va_format( "%g", value.f );
 		case SWF_VAR_BOOL:		return value.b ? "true" : "false";
-		case SWF_VAR_INTEGER:	return va( "%i", value.i );
+		case SWF_VAR_INTEGER:	return va_format( "%i", value.i );
 
 		case SWF_VAR_NULL:		return "[null]";
 		case SWF_VAR_UNDEF:		return "[undefined]";
 		case SWF_VAR_OBJECT:	return value.object->DefaultValue( true ).ToString();
 		case SWF_VAR_FUNCTION:	
 			if ( swf_debugShowAddress.GetBool() ) {
-				return va( "[function:%p]", value.function );
+				return va_format( "[function:%p]", value.function );
 			} else {
 				return "[function]";
 			}

@@ -312,9 +312,8 @@ void idSaveLoadParms::SetDefaults( int newInputDevice ) {
 	}
 
 	if ( user != NULL ) {
-		idLocalUserWin * userWin = static_cast< idLocalUserWin * >( user );
-		userId = idStr::Hash( userWin->GetGamerTag() );
-		idLib::PrintfIf( saveGame_verbose.GetBool(), "profile userId/gamertag: %s (%d)\n", userWin->GetGamerTag(), userId );
+		userId = idStr::Hash( user->GetGamerTag() );
+		idLib::PrintfIf( saveGame_verbose.GetBool(), "profile userId/gamertag: %s (%d)\n", user->GetGamerTag(), userId );
 		inputDeviceId = user->GetInputDevice();
 	}
 }
@@ -612,7 +611,7 @@ idSaveGameManager::RetrySave
 ========================
 */
 void idSaveGameManager::RetrySave() {
-	if ( DeviceSelectorWaitingOnSaveRetry() && !common->Dialog().HasDialogMsg( GDM_WARNING_FOR_NEW_DEVICE_ABOUT_TO_LOSE_PROGRESS, false ) ) {
+	if ( DeviceSelectorWaitingOnSaveRetry() && !common->Dialog().HasDialogMsg( GDM_WARNING_FOR_NEW_DEVICE_ABOUT_TO_LOSE_PROGRESS, nullptr ) ) {
 		cmdSystem->AppendCommandText( "savegame autosave\n" );
 	}
 }
@@ -656,12 +655,12 @@ void idSaveGameManager::ShowRetySaveDialog( const char * folder, const int64 byt
 	idStr size;
 	if ( bytes > ( 1024 * 1024 ) ) {
 		const float roundUp = ( ( 1024.0f * 1024.0f / 10.0f )- 1.0f );
-		size = va( "%.1f MB", ( roundUp + (float) bytes ) / ( 1024.0f * 1024.0f ) );
+		size = va_format( "%.1f MB", ( roundUp + (float) bytes ) / ( 1024.0f * 1024.0f ) );
 	} else {
 		const float roundUp = 1024.0f - 1.0f;
-		size = va( "%.0f KB", ( roundUp + (float) bytes ) / 1024.0f );
+		size = va_format( "%.0f KB", ( roundUp + (float) bytes ) / 1024.0f );
 	}
-	idStr msg = va( format.c_str(), size.c_str() );
+	idStr msg = va_format( format.c_str(), size.c_str() );
 
 	common->Dialog().AddDynamicDialog( GDM_INSUFFICENT_STORAGE_SPACE, callbacks, optionText, true, msg, true );
 }
@@ -900,4 +899,13 @@ void idSaveGameManager::Pump() {
 		optionText.Append( idStrId( "#STR_SWF_RETRY" ) );
 		common->Dialog().AddDynamicDialog( GDM_ERROR_SAVING_SAVEGAME, callbacks, optionText, true, "" );
 	}
+}
+
+/*
+================================================
+idSaveGameThread::Run
+================================================
+*/
+int idSaveGameThread::Run() {
+	return 0;
 }

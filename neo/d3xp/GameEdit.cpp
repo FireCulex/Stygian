@@ -271,10 +271,10 @@ void idDragEntity::Update( idPlayer *player ) {
 		if ( joint != INVALID_JOINT && renderEntity != NULL && dragAnimator != NULL ) {
 			dragAnimator->GetJointTransform( joint, gameLocal.time, cursor->draggedPosition, axis );
 			cursor->draggedPosition = renderEntity->origin + cursor->draggedPosition * renderEntity->axis;
-			gameRenderWorld->DrawText( va( "%s\n%s\n%s, %s", drag->GetName(), drag->GetType()->classname, dragAnimator->GetJointName( joint ), bodyName.c_str() ), cursor->GetPhysics()->GetOrigin(), 0.1f, colorWhite, viewAxis, 1 );
+			gameRenderWorld->DrawText( va_format( "%s\n%s\n%s, %s", drag->GetName(), drag->GetType()->classname, dragAnimator->GetJointName( joint ), bodyName.c_str() ), cursor->GetPhysics()->GetOrigin(), 0.1f, colorWhite, viewAxis, 1 );
 		} else {
 			cursor->draggedPosition = cursor->GetPhysics()->GetOrigin();
-			gameRenderWorld->DrawText( va( "%s\n%s\n%s", drag->GetName(), drag->GetType()->classname, bodyName.c_str() ), cursor->GetPhysics()->GetOrigin(), 0.1f, colorWhite, viewAxis, 1 );
+			gameRenderWorld->DrawText( va_format( "%s\n%s\n%s", drag->GetName(), drag->GetType()->classname, bodyName.c_str() ), cursor->GetPhysics()->GetOrigin(), 0.1f, colorWhite, viewAxis, 1 );
 		}
 	}
 
