@@ -64,10 +64,16 @@ ID_INLINE void *operator new( size_t s ) {
 ID_INLINE void operator delete( void *p ) {
 	Mem_Free( p );
 }
+ID_INLINE void operator delete( void *p, size_t ) {
+	Mem_Free( p );
+}
 ID_INLINE void *operator new[]( size_t s ) {
 	return Mem_Alloc( s, TAG_NEW );
 }
 ID_INLINE void operator delete[]( void *p ) {
+	Mem_Free( p );
+}
+ID_INLINE void operator delete[]( void *p, size_t ) {
 	Mem_Free( p );
 }
 ID_INLINE void *operator new( size_t s, memTag_t tag ) {

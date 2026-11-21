@@ -414,9 +414,9 @@ idFileSystemLocal::OpenOSFile
 ================
 */
 idFileHandle idFileSystemLocal::OpenOSFile( const char *fileName, fsMode_t mode ) {
-	idFileHandle fp;
+	idFileHandle fp = NULL;
 
-
+#if defined(ID_PC_WIN)
 	DWORD dwAccess = 0;
 	DWORD dwShare = 0;
 	DWORD dwCreate = 0;
@@ -437,14 +437,26 @@ idFileHandle idFileSystemLocal::OpenOSFile( const char *fileName, fsMode_t mode 
 		dwShare = FILE_SHARE_READ;
 		dwCreate = OPEN_ALWAYS;
 		dwFlags = FILE_ATTRIBUTE_NORMAL;
-					}
+				}
 
 	fp = CreateFile( fileName, dwAccess, dwShare, NULL, dwCreate, dwFlags, NULL );
 	if ( fp == INVALID_HANDLE_VALUE ) {
 		return NULL;
 				}
+#else
+	const char *fmode = NULL;
+	switch( mode ) {
+		case FS_WRITE: fmode = "wb"; break;
+		case FS_READ: fmode = "rb"; break;
+		case FS_APPEND: fmode = "ab"; break;
+	}
+	if ( fmode ) {
+		fp = (idFileHandle)fopen( fileName, fmode );
+	}
+#endif
 	return fp;
 }
+
 
 /*
 ================
@@ -452,7 +464,13 @@ idFileSystemLocal::CloseOSFile
 ================
 */
 void idFileSystemLocal::CloseOSFile( idFileHandle o ) {
+#if defined(ID_PC_WIN)
 	::CloseHandle( o );
+#else
+	if ( o ) {
+		fclose( (FILE*)o );
+	}
+#endif
 }
 
 /*
@@ -461,7 +479,15 @@ idFileSystemLocal::DirectFileLength
 ================
 */
 int idFileSystemLocal::DirectFileLength( idFileHandle o ) {
+#if defined(ID_PC_WIN)
 	return GetFileSize( o, NULL );
+#else
+	long pos = ftell( (FILE*)o );
+	fseek( (FILE*)o, 0, SEEK_END );
+	long size = ftell( (FILE*)o );
+	fseek( (FILE*)o, pos, SEEK_SET );
+	return size;
+#endif
 }
 
 /*
@@ -532,7 +558,7 @@ void idFileSystemLocal::BeginLevelLoad( const char *name, char *_blockBuffer, in
 	manifestName.StripPath();
 	
 	if ( resourceFiles.Num() > 0 ) {
-		AddResourceFile( va( "%s.resources", manifestName.c_str() ) );
+		AddResourceFile( va_format( "%s.resources", manifestName.c_str() ) );
 	}
 
 }
@@ -547,7 +573,7 @@ void idFileSystemLocal::UnloadResourceContainer( const char *name ) {
 	if ( name == NULL || *name == '\0' ) {
 		return;
 	}
-	RemoveResourceFile( va( "%s.resources", name ) );
+	RemoveResourceFile( va_format( "%s.resources", name ) );
 }
 
 /*
@@ -561,7 +587,7 @@ void idFileSystemLocal::UnloadMapResources( const char *name ) {
 	}
 
 	if ( resourceFiles.Num() > 0 ) {
-		RemoveMapResourceFile( va( "%s.resources", name ) );
+		RemoveMapResourceFile( va_format( "%s.resources", name ) );
 	}
 }
 
@@ -977,12 +1003,12 @@ void idFileSystemLocal::WriteResourcePacks() {
 		idFileManifest manifest;
 		if ( manifest.LoadManifest( path ) ) {
 			//manifest.Print();
-			manifest.RemoveAll( va( "strings/%s", ID_LANG_ENGLISH ) );	// remove all .lang files
-			manifest.RemoveAll( va( "strings/%s", ID_LANG_FRENCH ) );
-			manifest.RemoveAll( va( "strings/%s", ID_LANG_ITALIAN ) );
-			manifest.RemoveAll( va( "strings/%s", ID_LANG_GERMAN ) );
-			manifest.RemoveAll( va( "strings/%s", ID_LANG_SPANISH ) );
-			manifest.RemoveAll( va( "strings/%s", ID_LANG_JAPANESE ) );
+			manifest.RemoveAll( va_format( "strings/%s", ID_LANG_ENGLISH ) );	// remove all .lang files
+			manifest.RemoveAll( va_format( "strings/%s", ID_LANG_FRENCH ) );
+			manifest.RemoveAll( va_format( "strings/%s", ID_LANG_ITALIAN ) );
+			manifest.RemoveAll( va_format( "strings/%s", ID_LANG_GERMAN ) );
+			manifest.RemoveAll( va_format( "strings/%s", ID_LANG_SPANISH ) );
+			manifest.RemoveAll( va_format( "strings/%s", ID_LANG_JAPANESE ) );
 			manifests.Append( manifest );
 		}
 	}
@@ -1214,7 +1240,7 @@ void idFileSystemLocal::WriteResourcePacks() {
 		idStrList & sampleList = *soundFileInfo[ k ].samples;
 
 		// write pc
-		idResourceContainer::WriteResourceFile( va( "_sound_pc_%s", soundFileInfo[ k ].filename ), sampleList, false );
+		idResourceContainer::WriteResourceFile( va_format( "_sound_pc_%s", soundFileInfo[ k ].filename ), sampleList, false );
 		for ( int l = 0; l < sampleList.Num(); l++ ) {
 			sampleList[ l ].Replace( ".idwav", ".idxma" );
 		}
@@ -1298,8 +1324,8 @@ void idFileSystemLocal::CopyFile( const char *fromOSPath, const char *toOSPath )
 				newFromPath.ToLower();
 				newToPath.BackSlashesToSlashes();
 				newToPath.ToLower();
-				newFromPath.Replace( "/vo/", va( "/vo/%s/", lang ) );
-				newToPath.Replace( "/vo/", va( "/vo/%s/", lang ) );
+				newFromPath.Replace( "/vo/", va_format( "/vo/%s/", lang ) );
+				newToPath.Replace( "/vo/", va_format( "/vo/%s/", lang ) );
 
 				src = OpenExplicitFileRead( newFromPath );
 				if ( src == NULL ) {
@@ -1550,11 +1576,19 @@ void idFileSystemLocal::RemoveFile( const char *relativePath ) {
 
 	if ( fs_basepath.GetString()[0] ) {
 		OSPath = BuildOSPath( fs_basepath.GetString(), gameFolder, relativePath );
+#if defined(ID_PC_WIN)
 		::DeleteFile( OSPath );
+#else
+		remove( OSPath.c_str() );
+#endif
 	}
 
 	OSPath = BuildOSPath( fs_savepath.GetString(), gameFolder, relativePath );
+#if defined(ID_PC_WIN)
 	::DeleteFile( OSPath );
+#else
+	remove( OSPath.c_str() );
+#endif
 }
 
 /*
@@ -1757,6 +1791,7 @@ bool idFileSystemLocal::RenameFile( const char * relativePath, const char * newN
 	// this gives atomic-delete-on-rename, like POSIX rename()
 	// There is a MoveFileTransacted() on vista and above, not sure if that means there
 	// is a race condition inside MoveFileEx...
+#if defined(ID_PC_WIN)
 	const bool success = ( MoveFileEx( oldOSPath.c_str(), newOSPath.c_str(), MOVEFILE_REPLACE_EXISTING ) != 0 );
 
 	if ( !success ) {
@@ -1764,6 +1799,10 @@ bool idFileSystemLocal::RenameFile( const char * relativePath, const char * newN
 		idLib::Warning( "RenameFile( %s, %s ) error %i", newOSPath.c_str(), oldOSPath.c_str(), err );
 	}
 	return success;
+#else
+	// POSIX rename is atomic
+	return rename( oldOSPath.c_str(), newOSPath.c_str() ) == 0;
+#endif
 }
 
 /*
@@ -2358,7 +2397,7 @@ idFileSystemLocal::AddResourceFile
 ================
 */
 int idFileSystemLocal::AddResourceFile( const char * resourceFileName ) {
-	idStrStatic< MAX_OSPATH > resourceFile = va( "maps/%s", resourceFileName );
+	idStrStatic< MAX_OSPATH > resourceFile = va_format( "maps/%s", resourceFileName );
 	idResourceContainer *rc = new idResourceContainer();
 	if ( rc->Init( resourceFile, resourceFiles.Num() ) ) {
 		resourceFiles.Append( rc );
@@ -2405,7 +2444,7 @@ idFileSystemLocal::RemoveMapResourceFile
 ================
 */
 void idFileSystemLocal::RemoveMapResourceFile( const char * resourceFileName ) {
-	int idx = FindResourceFile( va( "maps/%s", resourceFileName ) );
+	int idx = FindResourceFile( va_format( "maps/%s", resourceFileName ) );
 	if ( idx >= 0 ) {
 		RemoveResourceFileByIndex( idx );
 	}
@@ -2875,7 +2914,7 @@ idFile *idFileSystemLocal::OpenFileReadFlags( const char *relativePath, int sear
 									continue;
 								}
 								samplePath = relativePath;
-								samplePath.Replace( "/vo/", va( "/vo/%s/", lang ) );
+								samplePath.Replace( "/vo/", va_format( "/vo/%s/", lang ) );
 								samplePath.SetFileExtension( "idwav" );
 								if ( samplePath.Find( "generated/" ) == -1 ) {
 									samplePath.Insert( "generated/", 0 );
@@ -2893,7 +2932,7 @@ idFile *idFileSystemLocal::OpenFileReadFlags( const char *relativePath, int sear
 								continue;
 							}
 							idStrStatic< MAX_OSPATH > guiPath = relativePath;
-							guiPath.Replace( "guis/", va( "guis/%s/", lang ) );
+							guiPath.Replace( "guis/", va_format( "guis/%s/", lang ) );
 							fileManifest.Append( guiPath );
 						}
 					} else {

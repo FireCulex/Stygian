@@ -136,6 +136,34 @@ void idStr::FreeData() {
 idStr::operator=
 ============
 */
+void idStr::operator=( const bool b ) {
+	*this = b ? "true" : "false";
+}
+
+void idStr::operator=( const char c ) {
+	EnsureAlloced( 2, false );
+	data[ 0 ] = c;
+	data[ 1 ] = '\0';
+	len = 1;
+}
+
+void idStr::operator=( const int i ) {
+	*this = va_format( "%d", i );
+}
+
+void idStr::operator=( const unsigned u ) {
+	*this = va_format( "%u", u );
+}
+
+void idStr::operator=( const float f ) {
+	*this = va_format( "%f", f );
+}
+
+/*
+============
+idStr::operator=
+============
+*/
 void idStr::operator=( const char *text ) {
 	int l;
 	int diff;
@@ -576,7 +604,7 @@ Formats integers with commas for readability.
 ========================
 */
 idStr idStr::FormatInt( const int num, bool isCash ) {
-	idStr val = va( "%d", num );
+	idStr val = va_format( "%d", num );
 	int len = val.Length();
 	for ( int i = 0 ; i < ( ( len - 1 ) / 3 ); i++ ) {
 		int pos = val.Length() - ( ( i + 1 ) * 3 + i );
@@ -1846,9 +1874,13 @@ or returns -1 on failure or if the buffer would be overflowed.
 int idStr::vsnPrintf( char *dest, int size, const char *fmt, va_list argptr ) {
 	int ret;
 
+#if defined(ID_PC_WIN)
 #undef _vsnprintf
 	ret = _vsnprintf( dest, size-1, fmt, argptr );
 #define _vsnprintf	use_idStr_vsnPrintf
+#else
+	ret = vsnprintf( dest, size-1, fmt, argptr );
+#endif
 	dest[size-1] = '\0';
 	if ( ret < 0 || ret >= size ) {
 		return -1;
@@ -1903,10 +1935,26 @@ does a varargs printf into a temp buffer
 NOTE: not thread safe
 ============
 */
-char *va( const char *fmt, ... ) {
+char *va_format( const char *fmt, ... ) {
 	va_list argptr;
 	static int index = 0;
 	static char string[4][16384];	// in case called by nested functions
+	char *buf;
+
+	buf = string[index];
+	index = (index + 1) & 3;
+
+	va_start( argptr, fmt );
+	vsprintf( buf, fmt, argptr );
+	va_end( argptr );
+
+	return buf;
+}
+
+const char* va( const char* fmt, ... ) {
+	va_list argptr;
+	static int index = 0;
+	static char string[4][16384];
 	char *buf;
 
 	buf = string[index];
@@ -2051,22 +2099,22 @@ idStr idStr::FormatNumber( int number ) {
 
 		if ( li->count ) {
 			if ( !found ) {
-				string += va( "%i,", li->count );
+				string += va_format( "%i,", li->count );
 			} else {
-				string += va( "%3.3i,", li->count );
+				string += va_format( "%3.3i,", li->count );
 			}
 			found = true;
 		}
 		else if ( found ) {
-			string += va( "%3.3i,", li->count );
+			string += va_format( "%3.3i,", li->count );
 		}
 	}
 
 	if ( found ) {
-		string += va( "%3.3i", number );
+		string += va_format( "%3.3i", number );
 	}
 	else {
-		string += va( "%i", number );
+		string += va_format( "%i", number );
 	}
 
 	// pad to proper size
@@ -2085,6 +2133,6 @@ CONSOLE_COMMAND( testStrId, "prints a localized string", 0 ) {
 		return;
 	}
 
-	idStrId str( va( "#%s", args.Argv( 1 ) ) );
+	idStrId str( va_format( "#%s", args.Argv( 1 ) ) );
 	idLib::Printf( "%s = %s\n", args.Argv( 1 ), str.GetLocalizedString() );
 }

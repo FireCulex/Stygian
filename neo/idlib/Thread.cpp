@@ -212,11 +212,19 @@ int idSysThread::ThreadProc( idSysThread * thread ) {
 		} else {
 			retVal = thread->Run();
 		}
-	} catch ( idException & ex ) {
+	#if !defined(ID_PC_WIN) && !defined(_MSC_VER)
+} catch ( idException & ex ) {
+		idLib::Warning( "Fatal error in thread %s: %s", thread->GetName(), ex.GetError() );
+		// We don't handle threads terminating unexpectedly very well, so just terminate the whole process
+		exit( 0 );
+	}
+#else
+} catch ( idException & ex ) {
 		idLib::Warning( "Fatal error in thread %s: %s", thread->GetName(), ex.GetError() );
 		// We don't handle threads terminating unexpectedly very well, so just terminate the whole process
 		_exit( 0 );
 	}
+#endif
 
 	thread->isRunning = false;
 

@@ -97,7 +97,7 @@ bool idDemoFile::OpenForReading( const char *fileName ) {
 		fileImage = (byte *)Mem_Alloc( fileLength, TAG_CRAP );
 		f->Read( fileImage, fileLength );
 		fileSystem->CloseFile( f );
-		f = new (TAG_SYSTEM) idFile_Memory( va( "preloaded(%s)", fileName ), (const char *)fileImage, fileLength );
+		f = new (TAG_SYSTEM) idFile_Memory( va_format( "preloaded(%s)", fileName ), (const char *)fileImage, fileLength );
 	}
 
 	if ( com_logDemos.GetBool() ) {
@@ -213,7 +213,7 @@ const char *idDemoFile::ReadHashString() {
 	int		index;
 
 	if ( log && fLog ) {
-		const char *text = va( "%s > Reading hash string\n", logStr.c_str() );
+		const char *text = va_format( "%s > Reading hash string\n", logStr.c_str() );
 		fLog->Write( text, strlen( text ) );
 	} 
 
@@ -247,7 +247,7 @@ idDemoFile::WriteHashString
 */
 void idDemoFile::WriteHashString( const char *str ) {
 	if ( log && fLog ) {
-		const char *text = va( "%s > Writing hash string\n", logStr.c_str() );
+		const char *text = va_format( "%s > Writing hash string\n", logStr.c_str() );
 		fLog->Write( text, strlen( text ) );
 	}
 	// see if it is already in the has table

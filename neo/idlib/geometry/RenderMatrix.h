@@ -98,9 +98,18 @@ public:
 	// Create a matrix that goes from a global coordinate to a view coordinate (OpenGL looking down -Z) based on the given view origin/axis.
 	static void				CreateViewMatrix( const idVec3 & origin, const idMat3 & axis, idRenderMatrix & out );
 
+	// Create a look-at view matrix.
+	static void				CreateLookAtMatrix( const idVec3 & eye, const idVec3 & target, const idVec3 & up, idRenderMatrix & out );
+
 	// Create a projection matrix.
 	static void				CreateProjectionMatrix( float xMin, float xMax, float yMin, float yMax, float zNear, float zFar, idRenderMatrix & out );
 	static void				CreateProjectionMatrixFov( float xFovDegrees, float yFovDegrees, float zNear, float zFar, float xOffset, float yOffset, idRenderMatrix & out );
+	
+	// Create a perspective projection matrix.
+	static void				CreatePerspectiveMatrix( float fovYDegrees, float aspect, float zNear, float zFar, idRenderMatrix & out );
+	
+	// Create an orthographic projection matrix.
+	static void				CreateOrthoMatrix( float left, float right, float bottom, float top, float zNear, float zFar, idRenderMatrix & out );
 
 	// Apply depth hacks to a projection matrix.
 	static ID_INLINE void	ApplyDepthHack( idRenderMatrix & src );
@@ -116,6 +125,15 @@ public:
 	static bool				Inverse( const idRenderMatrix & src, idRenderMatrix & out );
 	static void				InverseByTranspose( const idRenderMatrix & src, idRenderMatrix & out );
 	static bool				InverseByDoubles( const idRenderMatrix & src, idRenderMatrix & out );
+
+	// Member matrix operations.
+	ID_INLINE void			Inverse();
+	ID_INLINE idRenderMatrix operator*( const idRenderMatrix & b ) const;
+
+	// Convenience methods for view/projection matrices.
+	void					LookAt( const idVec3 & eye, const idVec3 & target, const idVec3 & up );
+	void					Perspective( float fovYDegrees, float aspect, float zNear, float zFar );
+	void					Ortho( float left, float right, float bottom, float top, float zNear, float zFar );
 
 	// Copy or create a matrix that is stored directly into four float4 vectors which is useful for directly setting vertex program uniforms.
 	static void				CopyMatrix( const idRenderMatrix & matrix, idVec4 & row0, idVec4 & row1, idVec4 & row2, idVec4 & row3 );
@@ -401,6 +419,32 @@ ID_INLINE void idRenderMatrix::InverseTransformPlane( const idPlane & in, idPlan
 /*
 ========================
 idRenderMatrix::TransformModelToClip
+
+/*
+========================
+idRenderMatrix::Inverse (member)
+========================
+*/
+ID_INLINE void idRenderMatrix::Inverse() {
+	idRenderMatrix inv;
+	if ( !Inverse( *this, inv ) ) {
+		Identity(); // fallback
+	}
+	*this = inv;
+}
+
+/*
+========================
+idRenderMatrix::operator* (matrix multiplication)
+========================
+*/
+ID_INLINE idRenderMatrix idRenderMatrix::operator*( const idRenderMatrix & b ) const {
+	idRenderMatrix result;
+	Multiply( *this, b, result );
+	return result;
+}
+
+/*
 ========================
 */
 ID_INLINE void idRenderMatrix::TransformModelToClip( const idVec3 & src, const idRenderMatrix & modelMatrix, const idRenderMatrix & projectionMatrix, idVec4 & eye, idVec4 & clip ) {

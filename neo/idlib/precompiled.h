@@ -46,6 +46,7 @@ If you have questions concerning this license or the applicable additional terms
 
 // id lib
 #include "../idlib/Lib.h"
+#include "../idlib/Str.h"
 
 #include "sys/sys_filesystem.h"
 
@@ -112,6 +113,7 @@ const int MAX_EXPRESSION_REGISTERS = 4096;
 
 // Session / Network
 #include "../sys/LightweightCompression.h"
+#include "../sys/Snapshot_Jobs.h"
 #include "../sys/Snapshot.h"
 #include "../sys/PacketProcessor.h"
 #include "../sys/SnapshotProcessor.h"

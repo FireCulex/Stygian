@@ -681,7 +681,7 @@ void idCommonDialog::Render( bool loading ) {
 			messageList[0].clear = true;
 		} else {
 			idStrId txtTime = idStrId( "#str_time_remaining" );
-			dialog->SetGlobal( "countdownInfo", va( txtTime.GetLocalizedString(), timeRemaining ) );
+			dialog->SetGlobal( "countdownInfo", va_format( txtTime.GetLocalizedString(), timeRemaining ) );
 		}
 	}
 
@@ -1380,11 +1380,11 @@ CONSOLE_COMMAND( testShowDynamicDialog, "show a dynamic dialog", 0 ) {
 	idStr size;
 	int requiredSpaceInBytes = 150000;
 	if ( requiredSpaceInBytes > ( 1024 * 1024 ) ) {
-		size = va( "%.1f MB", (float) requiredSpaceInBytes / ( 1024.0f * 1024.0f ) );
+		size = va_format( "%.1f MB", (float) requiredSpaceInBytes / ( 1024.0f * 1024.0f ) );
 	} else {
-		size = va( "%.0f KB", (float) requiredSpaceInBytes / 1024.0f );
+		size = va_format( "%.0f KB", (float) requiredSpaceInBytes / 1024.0f );
 	}
-	idStr msg = va( format.c_str(), size.c_str() );
+	idStr msg = va_format( format.c_str(), size.c_str() );
 
 	common->Dialog().AddDynamicDialog( GDM_INSUFFICENT_STORAGE_SPACE, callbacks, optionText, true, msg );
 }

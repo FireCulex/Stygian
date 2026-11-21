@@ -41,7 +41,11 @@ uint32 globalDmaTag;
 bool SpursEmulationAssertFailed( const char *filename, int line, const char *expression ) {
 	static bool halt = true;
 	if ( halt ) {
+#if defined(ID_PC_WIN)
 		__debugbreak();
+#else
+		__builtin_trap();
+#endif
 	}
 	return true;
 }

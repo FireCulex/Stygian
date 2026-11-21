@@ -270,7 +270,7 @@ idKeyInput::ArgCompletion_KeyName
 */
 void idKeyInput::ArgCompletion_KeyName( const idCmdArgs &args, void(*callback)( const char *s ) ) {
 	for ( keyname_t * kn = keynames; kn->name; kn++ ) {
-		callback( va( "%s %s", args.Argv( 0 ), kn->name ) );
+		callback( va_format( "%s %s", args.Argv( 0 ), kn->name ) );
 	}
 }
 
@@ -348,6 +348,7 @@ idKeyInput::LocalizedKeyName
 ========================
 */
 const char * idKeyInput::LocalizedKeyName( keyNum_t keynum ) {
+#if defined(ID_PC_WIN)
 	if ( keynum < K_JOY1 ) {
 		// On the PC, we want to turn the scan code in to a key label that matches the currently selected keyboard layout
 		unsigned char keystate[256] = { 0 };
@@ -366,6 +367,7 @@ const char * idKeyInput::LocalizedKeyName( keyNum_t keynum ) {
 			return bindStr;
 		}
 	}
+#endif
 
 	// check for a key string
 	for ( keyname_t * kn = keynames; kn->name; kn++ ) {

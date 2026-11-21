@@ -125,6 +125,7 @@ idSIMDProcessor *p_simd;
 idSIMDProcessor *p_generic;
 long baseClocks = 0;
 
+#if defined(ID_PC_WIN)
 
 #define TIME_TYPE int
 
@@ -150,6 +151,20 @@ long saved_ebx = 0;
 	__asm xor eax, eax						\
 	__asm cpuid
 
+#else
+
+#define TIME_TYPE uint64_t
+
+static inline uint64_t ReadTSC() {
+    uint32_t lo, hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t)hi << 32) | lo;
+}
+
+#define StartRecordTime( start )	start = ReadTSC()
+#define StopRecordTime( end )		end = ReadTSC()
+
+#endif
 
 #define GetBest( start, end, best )			\
 	if ( !best || end - start < best ) {	\
@@ -249,7 +264,7 @@ void TestMinMax() {
 	}
 
 	result = ( min == min2 && max == max2 ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->MinMax( float[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->MinMax( float[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 
 	bestClocksGeneric = 0;
 	for ( i = 0; i < NUMTESTS; i++ ) {
@@ -269,7 +284,7 @@ void TestMinMax() {
 	}
 
 	result = ( v2min == v2min2 && v2max == v2max2 ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->MinMax( idVec2[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->MinMax( idVec2[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 
 	bestClocksGeneric = 0;
 	for ( i = 0; i < NUMTESTS; i++ ) {
@@ -289,7 +304,7 @@ void TestMinMax() {
 	}
 
 	result = ( vmin == vmin2 && vmax == vmax2 ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->MinMax( idVec3[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->MinMax( idVec3[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 
 	bestClocksGeneric = 0;
 	for ( i = 0; i < NUMTESTS; i++ ) {
@@ -309,7 +324,7 @@ void TestMinMax() {
 	}
 
 	result = ( vmin == vmin2 && vmax == vmax2 ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->MinMax( idDrawVert[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->MinMax( idDrawVert[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 
 	bestClocksGeneric = 0;
 	for ( i = 0; i < NUMTESTS; i++ ) {
@@ -329,7 +344,7 @@ void TestMinMax() {
 	}
 
 	result = ( vmin == vmin2 && vmax == vmax2 ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->MinMax( idDrawVert[], indexes[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->MinMax( idDrawVert[], indexes[] ) %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -377,7 +392,7 @@ void TestMemcpy() {
 		}
 	}
 	result = ( i >= BIG_COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->Memcpy() %s", result), BIG_COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->Memcpy() %s", result), BIG_COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -420,7 +435,7 @@ void TestMemset() {
 		}
 	}
 	result = ( i >= BIG_COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->Memset() %s", result), BIG_COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->Memset() %s", result), BIG_COUNT, bestClocksSIMD, bestClocksGeneric );
 
 	j = 0;
 
@@ -446,7 +461,7 @@ void TestMemset() {
 		}
 	}
 	result = ( i >= BIG_COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->Memset( 0 ) %s", result), BIG_COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->Memset( 0 ) %s", result), BIG_COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -520,7 +535,7 @@ void TestBlendJoints() {
 		}
 	}
 	result = ( i >= COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->BlendJoints() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->BlendJoints() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -594,7 +609,7 @@ void TestBlendJointsFast() {
 		}
 	}
 	result = ( i >= COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->BlendJointsFast() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->BlendJointsFast() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -646,7 +661,7 @@ void TestConvertJointQuatsToJointMats() {
 		}
 	}
 	result = ( i >= COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->ConvertJointQuatsToJointMats() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->ConvertJointQuatsToJointMats() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -703,7 +718,7 @@ void TestConvertJointMatsToJointQuats() {
 		}
 	}
 	result = ( i >= COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->ConvertJointMatsToJointQuats() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->ConvertJointMatsToJointQuats() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -765,7 +780,7 @@ void TestTransformJoints() {
 		}
 	}
 	result = ( i >= COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->TransformJoints() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->TransformJoints() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -827,7 +842,7 @@ void TestUntransformJoints() {
 		}
 	}
 	result = ( i >= COUNT ) ? "ok" : S_COLOR_RED"X";
-	PrintClocks( va( "   simd->UntransformJoints() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
+	PrintClocks( va_format( "   simd->UntransformJoints() %s", result ), COUNT, bestClocksSIMD, bestClocksGeneric );
 }
 
 /*
@@ -1215,7 +1230,12 @@ idSIMD::Test_f
 */
 void idSIMD::Test_f( const idCmdArgs &args ) {
 
+#if defined(ID_PC_WIN)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL );
+#else
+	// On Linux, we can't easily set thread priority from user space without privileges
+	// Just skip the priority change
+#endif
 
 	p_simd = processor;
 	p_generic = generic;
@@ -1268,5 +1288,7 @@ void idSIMD::Test_f( const idCmdArgs &args ) {
 	p_simd = NULL;
 	p_generic = NULL;
 
+#if defined(ID_PC_WIN)
 	SetThreadPriority( GetCurrentThread(), THREAD_PRIORITY_NORMAL );
+#endif
 }

@@ -28,12 +28,14 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __SYS_INTRIINSICS_H__
 #define __SYS_INTRIINSICS_H__
 
+#include <stdint.h>
+
 /*
-================================================================================================
+==============================================================================================
 
 	Scalar single precision floating-point intrinsics
 
-================================================================================================
+==============================================================================================
 */
 
 ID_INLINE_EXTERN float __fmuls( float a, float b )				{	return ( a * b ); }
@@ -49,18 +51,22 @@ ID_INLINE_EXTERN float __frsqrts16( float x )					{	return ( 1.0f / sqrtf( x ) )
 ID_INLINE_EXTERN float __frndz( float x )						{	return (float)( (int)( x ) ); }
 
 /*
-================================================================================================
+==============================================================================================
 
 	Zero cache line and prefetch intrinsics
 
-================================================================================================
+==============================================================================================
 */
 
-#ifdef ID_WIN_X86_SSE2_INTRIN
+#if defined(ID_PC_WIN) && defined(ID_WIN_X86_SSE2_INTRIN)
 
 // The code below assumes that a cache line is 64 bytes.
 // We specify the cache line size as 128 here to make the code consistent with the consoles.
 #define CACHE_LINE_SIZE						128
+
+#include <intrin.h>
+#include <xmmintrin.h>
+#include <emmintrin.h>
 
 ID_FORCE_INLINE void Prefetch( const void * ptr, int offset ) {
 //	const char * bytePtr = ( (const char *) ptr ) + offset;
@@ -87,27 +93,62 @@ ID_FORCE_INLINE void FlushCacheLine( const void * ptr, int offset ) {
 }
 
 /*
-================================================
+==============================================================================
 	Other
-================================================
+==============================================================================
 */
 #else
 
+// Linux/macOS/other platforms - use GCC/Clang intrinsics
 #define CACHE_LINE_SIZE						128
 
-ID_INLINE void Prefetch( const void * ptr, int offset ) {}
-ID_INLINE void ZeroCacheLine( void * ptr, int offset ) {
-	byte * bytePtr = (byte *)( ( ( (UINT_PTR) ( ptr ) ) + ( offset ) ) & ~( CACHE_LINE_SIZE - 1 ) );
-	memset( bytePtr, 0, CACHE_LINE_SIZE );
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <smmintrin.h>
+#include <immintrin.h>
+#endif
+
+ID_INLINE void Prefetch( const void * ptr, int offset ) {
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+	const char * bytePtr = ( (const char *) ptr ) + offset;
+	_mm_prefetch( bytePtr + 0, _MM_HINT_NTA );
+	_mm_prefetch( bytePtr + 64, _MM_HINT_NTA );
+#endif
 }
-ID_INLINE void FlushCacheLine( const void * ptr, int offset ) {}
+ID_INLINE void ZeroCacheLine( void * ptr, int offset ) {
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+	assert_128_byte_aligned( ptr );
+	char * bytePtr = ( (char *) ptr ) + offset;
+	__m128i zero = _mm_setzero_si128();
+	_mm_store_si128( (__m128i *) ( bytePtr + 0*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 1*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 2*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 3*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 4*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 5*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 6*16 ), zero );
+	_mm_store_si128( (__m128i *) ( bytePtr + 7*16 ), zero );
+#else
+	uintptr_t addr = (uintptr_t)ptr + offset;
+	byte * bytePtr = (byte *)( addr & ~( CACHE_LINE_SIZE - 1 ) );
+	memset( bytePtr, 0, CACHE_LINE_SIZE );
+#endif
+}
+ID_INLINE void FlushCacheLine( const void * ptr, int offset ) {
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+	const char * bytePtr = ( (const char *) ptr ) + offset;
+	_mm_clflush( bytePtr + 0 );
+	_mm_clflush( bytePtr + 64 );
+#endif
+}
 
 #endif
 
 /*
-================================================
+==============================================================================
 	Block Clear Macros
-================================================
+==============================================================================
 */
 
 // number of additional elements that are potentially cleared when clearing whole cache lines at a time
@@ -123,49 +164,81 @@ ID_INLINE_EXTERN int CACHE_LINE_CLEAR_OVERFLOW_COUNT( int size ) {
 
 // if the pointer is not on a cache line boundary this assumes the cache line the pointer starts in was already cleared
 #define CACHE_LINE_CLEAR_BLOCK( ptr, size )																		\
-	byte * startPtr = (byte *)( ( ( (UINT_PTR) ( ptr ) ) + CACHE_LINE_SIZE - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );	\
-	byte * endPtr = (byte *)( ( (UINT_PTR) ( ptr ) + ( size ) - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );				\
+	byte * startPtr = (byte *)( ( ( (uintptr_t) ( ptr ) ) + CACHE_LINE_SIZE - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );	\
+	byte * endPtr = (byte *)( ( (uintptr_t) ( ptr ) + ( size ) - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );				\
 	for ( ; startPtr <= endPtr; startPtr += CACHE_LINE_SIZE ) {													\
 		ZeroCacheLine( startPtr, 0 );																			\
 	}
 
 #define CACHE_LINE_CLEAR_BLOCK_AND_FLUSH( ptr, size )															\
-	byte * startPtr = (byte *)( ( ( (UINT_PTR) ( ptr ) ) + CACHE_LINE_SIZE - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );	\
-	byte * endPtr = (byte *)( ( (UINT_PTR) ( ptr ) + ( size ) - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );				\
+	byte * startPtr = (byte *)( ( ( (uintptr_t) ( ptr ) ) + CACHE_LINE_SIZE - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );	\
+	byte * endPtr = (byte *)( ( (uintptr_t) ( ptr ) + ( size ) - 1 ) & ~( CACHE_LINE_SIZE - 1 ) );				\
 	for ( ; startPtr <= endPtr; startPtr += CACHE_LINE_SIZE ) {													\
 		ZeroCacheLine( startPtr, 0 );																			\
 		FlushCacheLine( startPtr, 0 );																			\
 	}
 
 /*
-================================================================================================
+==============================================================================================
 
 	Vector Intrinsics
 
-================================================================================================
+==============================================================================================
 */
 
 /*
-================================================
+==============================================================================
 	PC Windows
-================================================
+==============================================================================
 */
 
 #if !defined( R_SHUFFLE_D )
 #define R_SHUFFLE_D( x, y, z, w )	(( (w) & 3 ) << 6 | ( (z) & 3 ) << 4 | ( (y) & 3 ) << 2 | ( (x) & 3 ))
 #endif
 
+#if defined(ID_PC_WIN) && defined(ID_WIN_X86_SSE2_INTRIN)
+
 // make the intrinsics "type unsafe"
 typedef union __declspec(intrin_type) _CRT_ALIGN(16) __m128c {
-				__m128c() {}
-				__m128c( __m128 f ) { m128 = f; }
-				__m128c( __m128i i ) { m128i = i; }
+			__m128c() {}
+			__m128c( __m128 f ) { m128 = f; }
+			__m128c( __m128i i ) { m128i = i; }
 	operator	__m128() { return m128; }
 	operator	__m128i() { return m128i; }
 	__m128		m128;
 	__m128i		m128i;
 } __m128c;
 
+#else
+
+// GCC/Clang compatible vector type
+#if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+typedef union __attribute__((aligned(16))) __m128c {
+			__m128c() {}
+			__m128c( __m128 f ) { m128 = f; }
+			__m128c( __m128i i ) { m128i = i; }
+	operator	__m128() { return m128; }
+	operator	__m128i() { return m128i; }
+	__m128		m128;
+	__m128i		m128i;
+} __m128c;
+#else
+// Fallback for non-x86 platforms - use a dummy type
+typedef float __m128 __attribute__((vector_size(16), aligned(16)));
+typedef int __m128i __attribute__((vector_size(16), aligned(16)));
+typedef union __m128c {
+	__m128 m128;
+	__m128i m128i;
+} __m128c;
+#endif
+
+#endif
+
+// Common SSE intrinsic macros and functions
+#if defined(ID_PC_WIN) && defined(ID_WIN_X86_SSE2_INTRIN)
+// Use MSVC intrinsics directly
+#else
+// GCC/Clang intrinsic definitions
 #define _mm_madd_ps( a, b, c )				_mm_add_ps( _mm_mul_ps( (a), (b) ), (c) )
 #define _mm_nmsub_ps( a, b, c )				_mm_sub_ps( (c), _mm_mul_ps( (a), (b) ) )
 #define _mm_splat_ps( x, i )				__m128c( _mm_shuffle_epi32( __m128c( x ), _MM_SHUFFLE( i, i, i, i ) ) )
@@ -175,7 +248,7 @@ typedef union __declspec(intrin_type) _CRT_ALIGN(16) __m128c {
 #define _mm_sld_ps( x, y, imm )				__m128c( _mm_or_si128( _mm_srli_si128( __m128c( x ), imm ), _mm_slli_si128( __m128c( y ), 16 - imm ) ) )
 #define _mm_sld_si128( x, y, imm )			_mm_or_si128( _mm_srli_si128( x, imm ), _mm_slli_si128( y, 16 - imm ) )
 
-ID_FORCE_INLINE_EXTERN __m128 _mm_msum3_ps( __m128 a, __m128 b )	{
+ID_FORCE_INLINE_EXTERN __m128 _mm_msum3_ps( __m128 a, __m128 b ) {
 	__m128 c = _mm_mul_ps( a, b );
 	return _mm_add_ps( _mm_splat_ps( c, 0 ), _mm_add_ps( _mm_splat_ps( c, 1 ), _mm_splat_ps( c, 2 ) ) );
 }
@@ -216,5 +289,7 @@ ID_FORCE_INLINE_EXTERN __m128 _mm_div16_ps( __m128 x, __m128 y ) {
 #define _mm_loadu_bounds_0( bounds )		_mm_perm_ps( _mm_loadh_pi( _mm_load_ss( & bounds[0].x ), (__m64 *) & bounds[0].y ), _MM_SHUFFLE( 1, 3, 2, 0 ) )
 // load idBounds::GetMaxs()
 #define _mm_loadu_bounds_1( bounds )		_mm_perm_ps( _mm_loadh_pi( _mm_load_ss( & bounds[1].x ), (__m64 *) & bounds[1].y ), _MM_SHUFFLE( 1, 3, 2, 0 ) )
+
+#endif
 
 #endif	// !__SYS_INTRIINSICS_H__

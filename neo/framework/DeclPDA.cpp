@@ -67,7 +67,7 @@ bool idDeclPDA::Parse( const char *text, const int textLength, bool allowBinaryV
 	idLexer src;
 	idToken token;
 
-	idStr baseStrId = va( "#str_%s_pda_", GetName() );
+	idStr baseStrId = va_format( "#str_%s_pda_", GetName() );
 
 	src.LoadMemory( text, textLength, GetFileName(), GetLineNum() );
 	src.SetFlags( DECL_LEXER_FLAGS );
@@ -272,7 +272,7 @@ bool idDeclEmail::Parse( const char *_text, const int textLength, bool allowBina
 	idLexer src;
 	idToken token;
 
-	idStr baseStrId = va( "#str_%s_email_", GetName() );
+	idStr baseStrId = va_format( "#str_%s_email_", GetName() );
 
 	src.LoadMemory( _text, textLength, GetFileName(), GetLineNum() );
 	src.SetFlags( LEXFL_NOSTRINGCONCAT | LEXFL_ALLOWPATHNAMES |	LEXFL_ALLOWMULTICHARLITERALS | LEXFL_ALLOWBACKSLASHSTRINGCONCAT | LEXFL_NOFATALERRORS );
@@ -413,7 +413,7 @@ bool idDeclVideo::Parse( const char *text, const int textLength, bool allowBinar
 	idLexer src;
 	idToken token;
 
-	idStr baseStrId = va( "#str_%s_video_", GetName() );
+	idStr baseStrId = va_format( "#str_%s_video_", GetName() );
 
 	src.LoadMemory( text, textLength, GetFileName(), GetLineNum() );
 	src.SetFlags( LEXFL_NOSTRINGCONCAT | LEXFL_ALLOWPATHNAMES |	LEXFL_ALLOWMULTICHARLITERALS | LEXFL_ALLOWBACKSLASHSTRINGCONCAT | LEXFL_NOFATALERRORS );
@@ -535,7 +535,7 @@ bool idDeclAudio::Parse( const char *text, const int textLength, bool allowBinar
 	idLexer src;
 	idToken token;
 
-	idStr baseStrId = va( "#str_%s_audio_", GetName() );
+	idStr baseStrId = va_format( "#str_%s_audio_", GetName() );
 
 	src.LoadMemory( text, textLength, GetFileName(), GetLineNum() );
 	src.SetFlags( LEXFL_NOSTRINGCONCAT | LEXFL_ALLOWPATHNAMES |	LEXFL_ALLOWMULTICHARLITERALS | LEXFL_ALLOWBACKSLASHSTRINGCONCAT | LEXFL_NOFATALERRORS );

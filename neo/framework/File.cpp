@@ -1164,7 +1164,11 @@ idFile_Permanent::~idFile_Permanent
 */
 idFile_Permanent::~idFile_Permanent() {
 	if ( o ) {
+#if defined(ID_PC_WIN)
 		CloseHandle( o );
+#else
+		fclose( (FILE*)o );
+#endif
 	}
 }
 
@@ -1196,11 +1200,18 @@ int idFile_Permanent::Read( void *buffer, int len ) {
 	tries = 0;
 	while( remaining ) {
 		block = remaining;
+#if defined(ID_PC_WIN)
 		DWORD bytesRead;
 		if ( !ReadFile( o, buf, block, &bytesRead, NULL ) ) {
 			idLib::Warning( "idFile_Permanent::Read failed with %d from %s", GetLastError(), name.c_str() );
 		}
 		read = bytesRead;
+#else
+		read = fread( buf, 1, block, (FILE*)o );
+		if ( read < block && ferror( (FILE*)o ) ) {
+			idLib::Warning( "idFile_Permanent::Read failed from %s", name.c_str() );
+		}
+#endif
 		if ( read == 0 ) {
 			// we might have been trying to read from a CD, which
 			// sometimes returns a 0 read on windows
@@ -1250,9 +1261,16 @@ int idFile_Permanent::Write( const void *buffer, int len ) {
 	tries = 0;
 	while( remaining ) {
 		block = remaining;
+#if defined(ID_PC_WIN)
 		DWORD bytesWritten;
 		WriteFile( o, buf, block, &bytesWritten, NULL );
 		written = bytesWritten;
+#else
+		written = fwrite( buf, 1, block, (FILE*)o );
+		if ( written < block && ferror( (FILE*)o ) ) {
+			common->Printf( "idFile_Permanent::Write failed to %s\n", name.c_str() );
+		}
+#endif
 		if ( written == 0 ) {
 			if ( !tries ) {
 				tries = 1;
@@ -1284,7 +1302,11 @@ idFile_Permanent::ForceFlush
 =================
 */
 void idFile_Permanent::ForceFlush() {
+#if defined(ID_PC_WIN)
 	FlushFileBuffers( o );
+#else
+	fflush( (FILE*)o );
+#endif
 }
 
 /*
@@ -1293,7 +1315,11 @@ idFile_Permanent::Flush
 =================
 */
 void idFile_Permanent::Flush() {
+#if defined(ID_PC_WIN)
 	FlushFileBuffers( o );
+#else
+	fflush( (FILE*)o );
+#endif
 }
 
 /*
@@ -1302,7 +1328,11 @@ idFile_Permanent::Tell
 =================
 */
 int idFile_Permanent::Tell() const {
+#if defined(ID_PC_WIN)
 	return SetFilePointer( o, 0, NULL, FILE_CURRENT );
+#else
+	return ftell( (FILE*)o );
+#endif
 }
 
 /*
@@ -1332,6 +1362,7 @@ idFile_Permanent::Seek
 =================
 */
 int idFile_Permanent::Seek( long offset, fsOrigin_t origin ) {
+#if defined(ID_PC_WIN)
 	int retVal = INVALID_SET_FILE_POINTER;
 	switch( origin ) {
 		case FS_SEEK_CUR: retVal = SetFilePointer( o, offset, NULL, FILE_CURRENT ); break;
@@ -1339,6 +1370,15 @@ int idFile_Permanent::Seek( long offset, fsOrigin_t origin ) {
 		case FS_SEEK_SET: retVal = SetFilePointer( o, offset, NULL, FILE_BEGIN ); break;
 	}
 	return ( retVal == INVALID_SET_FILE_POINTER ) ? -1 : 0;
+#else
+	int whence;
+	switch( origin ) {
+		case FS_SEEK_CUR: whence = SEEK_CUR; break;
+		case FS_SEEK_END: whence = SEEK_END; break;
+		case FS_SEEK_SET: whence = SEEK_SET; break;
+	}
+	return fseek( (FILE*)o, offset, whence ) ? -1 : 0;
+#endif
 }
 
 #if 1

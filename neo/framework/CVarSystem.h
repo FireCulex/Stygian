@@ -56,7 +56,7 @@ If you have questions concerning this license or the applicable additional terms
 
 	CVars should be contructed only through one of the constructors with name,
 	value, flags and description. The name, value and description parameters
-	to the constructor have to be static strings, do not use va() or the like
+	to the constructor have to be static strings, do not use va_format() or the like
 	functions returning a string.
 
 	CVars may be declared multiple times using the same name string. However,

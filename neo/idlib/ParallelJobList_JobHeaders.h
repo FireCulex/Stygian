@@ -43,11 +43,14 @@ If you have questions concerning this license or the applicable additional terms
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <stdint.h>				// for uintptr_t
 
+#if defined(ID_PC_WIN)
 #include <basetsd.h>				// for UINT_PTR
 #include <intrin.h>
 #pragma warning( disable : 4100 )	// unreferenced formal parameter
 #pragma warning( disable : 4127 )	// conditional expression is constant
+#endif
 
 
 

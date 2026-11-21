@@ -130,8 +130,8 @@ public:
 	int ExpectAnyToken( idToken *token );
 	void SetMarker() {}
 	void UnreadToken( const idToken *token );
-	void Error( VERIFY_FORMAT_STRING const char *str, ... );
-	void Warning( VERIFY_FORMAT_STRING const char *str, ... );
+	void Error( const char *str, ... );
+	void Warning( const char *str, ... );
 	int ParseInt();
 	bool ParseBool();
 	float ParseFloat( bool *errorFlag = NULL );

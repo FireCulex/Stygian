@@ -46,6 +46,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #define WINVER				0x501
 
+#if defined(_WIN32) && !defined(__linux__) && !defined(__MINGW32__) && !defined(__MINGW64__)
 #include <winsock2.h>
 #include <mmsystem.h>
 #include <mmreg.h>
@@ -55,11 +56,14 @@ If you have questions concerning this license or the applicable additional terms
 
 #include <dsound.h>
 #include <dinput.h>
+#endif
 
 #endif /* !GAME_DLL */
 #endif /* !_D3SDK */
 
+#if defined(_WIN32) && !defined(__linux__) && !defined(__MINGW32__) && !defined(__MINGW64__)
 #include <intrin.h>			// needed for intrinsics like _mm_setzero_si28
+#endif
 
 #pragma warning(disable : 4100)				// unreferenced formal parameter
 #pragma warning(disable : 4127)				// conditional expression is constant
@@ -67,8 +71,10 @@ If you have questions concerning this license or the applicable additional terms
 #pragma warning(disable : 4714)				// function marked as __forceinline not inlined
 #pragma warning(disable : 4996)				// unsafe string operations
 
+#if defined(_WIN32) && !defined(__linux__) && !defined(__MINGW32__) && !defined(__MINGW64__)
 #include <malloc.h>							// no malloc.h on mac or unix
 #include <windows.h>						// for qgl.h
+#endif
 #undef FindText								// fix namespace pollution
 
 /*
@@ -96,6 +102,17 @@ If you have questions concerning this license or the applicable additional terms
 #include <math.h>
 #include <limits.h>
 #include <memory>
+
+#if defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+	// POSIX headers needed by platform shims and ported code
+	#include <unistd.h>
+	#include <strings.h>
+	#include <sys/stat.h>
+	#include <sys/types.h>
+
+	// Windows compatibility shims
+	#define OutputDebugString( msg )	fprintf( stderr, "%s", (const char *)(msg) )
+#endif
 
 //-----------------------------------------------------
 

@@ -204,7 +204,7 @@ public:
 	//BSM Added for the material editors rename capabilities
 	virtual bool				RenameDecl( declType_t type, const char* oldName, const char* newName );
 
-	virtual void				MediaPrint( VERIFY_FORMAT_STRING const char *fmt, ... );
+	virtual void				MediaPrint( const char *fmt, ... );
 	virtual void				WritePrecacheCommands( idFile *f );
 
 	virtual const idMaterial *		FindMaterial( const char *name, bool makeDefault = true );
@@ -1052,7 +1052,7 @@ int idDeclManagerLocal::GetChecksum() const {
 		total += linearLists[i].Num();
 	}
 
-	checksumData = (int *) _alloca16( total * 2 * sizeof( int ) );
+	checksumData = (int *)alloca( total * 2 * sizeof( int ) );
 
 	total = 0;
 	for ( i = 0; i < DECL_MAX_TYPES; i++ ) {
@@ -1328,7 +1328,7 @@ void idDeclManagerLocal::PrintType( const idCmdArgs &args, declType_t type ) {
 	common->Printf( "source: %s:%i\n", decl->sourceFile->fileName.c_str(), decl->sourceLine );
 	common->Printf( "----------\n" );
 	if ( decl->textSource != NULL ) {
-		char *declText = (char *)_alloca( decl->textLength + 1 );
+		char *declText = (char *)alloca( decl->textLength + 1 );
 		decl->GetText( declText );
 		common->Printf( "%s\n", declText );
 	} else {
@@ -1416,7 +1416,7 @@ idDecl *idDeclManagerLocal::CreateNewDecl( declType_t type, const char *name, co
 
 
 	int size = header.Length() + 1 + idStr::Length( canonicalName ) + 1 + defaultText.Length();
-	char *declText = ( char * ) _alloca( size + 1 );
+	char *declText = ( char * ) alloca( size + 1 );
 
 	memcpy( declText, header, header.Length() );
 	declText[header.Length()] = ' ';
@@ -1797,55 +1797,55 @@ void idDeclManagerLocal::ConvertPDAsToStrings( const idCmdArgs &args ) {
 	for ( int i = 0; i < count; i++ ) {
 		const idDeclPDA *decl = static_cast< const idDeclPDA * >( FindType( DECL_PDA, linearLists[ DECL_PDA ][ i ]->GetName(), false ) );
 
-		idStr pdaBaseStrId = va( headEnd.c_str(), decl->GetName() );
+		idStr pdaBaseStrId = va_format( headEnd.c_str(), decl->GetName() );
 
-		temp = va( "\n\n//////// %s PDA ////////////\n", decl->GetName() );
+		temp = va_format( "\n\n//////// %s PDA ////////////\n", decl->GetName() );
 		file->Write( temp, temp.Length() );
 
 		idStr pdaBase = pdaBaseStrId + "pda_%s" + tailEnd;
 		// Pda Name
-		temp = va( pdaBase.c_str(), "name", decl->GetPdaName() );
+		temp = va_format( pdaBase.c_str(), "name", decl->GetPdaName() );
 		file->Write( temp, temp.Length() );
 		// Full Name
-		temp = va( pdaBase.c_str(), "fullname", decl->GetFullName() );
+		temp = va_format( pdaBase.c_str(), "fullname", decl->GetFullName() );
 		file->Write( temp, temp.Length() );
 		// ID
-		temp = va( pdaBase.c_str(), "id", decl->GetID() );
+		temp = va_format( pdaBase.c_str(), "id", decl->GetID() );
 		file->Write( temp, temp.Length() );
 		// Post
-		temp = va( pdaBase.c_str(), "post", decl->GetPost() );
+		temp = va_format( pdaBase.c_str(), "post", decl->GetPost() );
 		file->Write( temp, temp.Length() );
 		// Title
-		temp = va( pdaBase.c_str(), "title", decl->GetTitle() );
+		temp = va_format( pdaBase.c_str(), "title", decl->GetTitle() );
 		file->Write( temp, temp.Length() );
 		// Security
-		temp = va( pdaBase.c_str(), "security", decl->GetSecurity() );
+		temp = va_format( pdaBase.c_str(), "security", decl->GetSecurity() );
 		file->Write( temp, temp.Length() );
 
 		int emailCount = decl->GetNumEmails();
 		for ( int emailIter = 0; emailIter < emailCount; emailIter++ ) {
 			const idDeclEmail * email = decl->GetEmailByIndex( emailIter );
 
-			idStr emailBaseStrId = va( headEnd.c_str(), email->GetName() );
+			idStr emailBaseStrId = va_format( headEnd.c_str(), email->GetName() );
 			idStr emailBase = emailBaseStrId + "email_%s" + tailEnd;
 
 			file->Write( "\t//Email\n", 9 );
 			// Date
-			temp = va( emailBase, "date", email->GetDate() );
+			temp = va_format( emailBase, "date", email->GetDate() );
 			file->Write( temp, temp.Length() );
 			// To
-			temp = va( emailBase, "to", email->GetTo() );
+			temp = va_format( emailBase, "to", email->GetTo() );
 			file->Write( temp, temp.Length() );
 			// From
-			temp = va( emailBase, "from", email->GetFrom() );
+			temp = va_format( emailBase, "from", email->GetFrom() );
 			file->Write( temp, temp.Length() );
 			// Subject
-			temp = va( emailBase, "subject", email->GetSubject() );
+			temp = va_format( emailBase, "subject", email->GetSubject() );
 			file->Write( temp, temp.Length() );
 			// Body
 			idStr body = email->GetBody();
 			body.Replace( "\n", "\\n" );
-			temp = va( emailBase, "text", body.c_str() );
+			temp = va_format( emailBase, "text", body.c_str() );
 			file->Write( temp, temp.Length() );
 
 			totalEmailCount++;
@@ -1855,17 +1855,17 @@ void idDeclManagerLocal::ConvertPDAsToStrings( const idCmdArgs &args ) {
 		for ( int audioIter = 0; audioIter < audioCount; audioIter++ ) {
 			const idDeclAudio * audio = decl->GetAudioByIndex( audioIter );
 
-			idStr audioBaseStrId = va( headEnd.c_str(), audio->GetName() );
+			idStr audioBaseStrId = va_format( headEnd.c_str(), audio->GetName() );
 			idStr audioBase = audioBaseStrId + "audio_%s" + tailEnd;
 
 			file->Write( "\t//Audio\n", 9 );
 			// Name
-			temp = va( audioBase, "name", audio->GetAudioName() );
+			temp = va_format( audioBase, "name", audio->GetAudioName() );
 			file->Write( temp, temp.Length() );
 			// Info
 			idStr info = audio->GetInfo();
 			info.Replace( "\n", "\\n" );
-			temp = va( audioBase, "info", info.c_str() );
+			temp = va_format( audioBase, "info", info.c_str() );
 			file->Write( temp, temp.Length() );
 
 			totalAudioCount++;
@@ -1885,27 +1885,27 @@ void idDeclManagerLocal::ConvertPDAsToStrings( const idCmdArgs &args ) {
 			continue;
 		}
 
-		idStr emailBaseStrId = va( "\t\"#str_%s_", email->GetName() );
+		idStr emailBaseStrId = va_format( "\t\"#str_%s_", email->GetName() );
 		idStr emailBase = emailBaseStrId + "email_%s" + tailEnd;
 
 		file->Write( "\t//Email\n", 9 );
 
 		// Date
-		temp = va( emailBase, "date", email->GetDate() );
+		temp = va_format( emailBase, "date", email->GetDate() );
 		file->Write( temp, temp.Length() );
 		// To
-		temp = va( emailBase, "to", email->GetTo() );
+		temp = va_format( emailBase, "to", email->GetTo() );
 		file->Write( temp, temp.Length() );
 		// From
-		temp = va( emailBase, "from", email->GetFrom() );
+		temp = va_format( emailBase, "from", email->GetFrom() );
 		file->Write( temp, temp.Length() );
 		// Subject
-		temp = va( emailBase, "subject", email->GetSubject() );
+		temp = va_format( emailBase, "subject", email->GetSubject() );
 		file->Write( temp, temp.Length() );
 		// Body
 		idStr body = email->GetBody();
 		body.Replace( "\n", "\\n" );
-		temp = va( emailBase, "text", body.c_str() );
+		temp = va_format( emailBase, "text", body.c_str() );
 		file->Write( temp, temp.Length() );
 
 		totalEmailCount++;
@@ -1919,18 +1919,18 @@ void idDeclManagerLocal::ConvertPDAsToStrings( const idCmdArgs &args ) {
 	for ( int i = 0; i < videoCount; i++ ) {
 		const idDeclVideo * video = static_cast< const idDeclVideo * >( FindType( DECL_VIDEO, linearLists[ DECL_VIDEO ][ i ]->GetName(), false ) );
 
-		idStr videoBaseStrId = va( "\t\"#str_%s_", video->GetName() );
+		idStr videoBaseStrId = va_format( "\t\"#str_%s_", video->GetName() );
 		idStr videoBase = videoBaseStrId + "video_%s" + tailEnd;
 
 		file->Write( "\t//Video\n", 9 );
 
 		// Name
-		temp = va( videoBase, "name", video->GetVideoName() );
+		temp = va_format( videoBase, "name", video->GetVideoName() );
 		file->Write( temp, temp.Length() );
 		// Info
 		idStr info = video->GetInfo();
 		info.Replace( "\n", "\\n" );
-		temp = va( videoBase, "info", info.c_str() );
+		temp = va_format( videoBase, "info", info.c_str() );
 		file->Write( temp, temp.Length() );
 
 		totalVideoCount++;
@@ -2131,7 +2131,7 @@ void idDeclLocal::SetTextLocal( const char *text, const int length ) {
 
 #ifdef USE_COMPRESSED_DECLS
 	int maxBytesPerCode = ( maxHuffmanBits + 7 ) >> 3;
-	byte *compressed = (byte *)_alloca( length * maxBytesPerCode );
+	byte *compressed = (byte *)alloca( length * maxBytesPerCode );
 	compressedLength = HuffmanCompressText( text, length, compressed, length * maxBytesPerCode );
 	textSource = (char *)Mem_Alloc( compressedLength, TAG_DECLTEXT );
 	memcpy( textSource, compressed, compressedLength );
@@ -2190,7 +2190,7 @@ bool idDeclLocal::ReplaceSourceFileText() {
 	}
 
 	// insert new text
-	char *declText = (char *) _alloca( textLength + 1 );
+	char *declText = (char *) alloca( textLength + 1 );
 	GetText( declText );
 	memmove( buffer.Ptr() + sourceTextOffset + textLength, buffer.Ptr() + sourceTextOffset + sourceTextLength, oldFileLength - sourceTextOffset - sourceTextLength );
 	memcpy( buffer.Ptr() + sourceTextOffset, declText, textLength );
@@ -2390,7 +2390,7 @@ void idDeclLocal::ParseLocal() {
 	declState = DS_PARSED;
 
 	// parse
-	char *declText = (char *) _alloca( ( GetTextLength() + 1 ) * sizeof( char ) );
+	char *declText = (char *) alloca( ( GetTextLength() + 1 ) * sizeof( char ) );
 	GetText( declText );
 	self->Parse( declText, GetTextLength(), true );
 

@@ -31,12 +31,14 @@ If you have questions concerning this license or the applicable additional terms
 #ifndef __TYPEINFOGEN__
 
 /*
-================================================================================================
+==============================================================================================
 
 	Platform specific mutex, signal, atomic integer and memory barrier.
 
-================================================================================================
+==============================================================================================
 */
+
+#if defined(ID_PC_WIN)
 
 	typedef CRITICAL_SECTION		mutexHandle_t;
 	typedef HANDLE					signalHandle_t;
@@ -48,19 +50,38 @@ If you have questions concerning this license or the applicable additional terms
 	#pragma intrinsic(_ReadWriteBarrier)
 	#define SYS_MEMORYBARRIER		_ReadWriteBarrier(); MemoryBarrier()
 
+#elif defined(ID_PC_LINUX)
 
+	#include <SDL.h>
+	#include <SDL_atomic.h>
+	#include <stdint.h>
 
+	typedef SDL_mutex*		mutexHandle_t;
+	struct sdlSignal_t;
+	typedef sdlSignal_t*	signalHandle_t;
+	typedef int32_t			interlockedInt_t;
+
+	// GCC/Clang memory barriers
+	#define SYS_MEMORYBARRIER		__sync_synchronize()
+
+#else
+
+	#error Unknown Platform
+
+#endif
 
 
 /*
-================================================================================================
+==============================================================================================
 
 	Platform specific thread local storage.
 	Can be used to store either a pointer or an integer.
 
-================================================================================================
+==============================================================================================
 */
 
+
+#if defined(ID_PC_WIN)
 
 	class idSysThreadLocalStorage {
 	public:
@@ -84,17 +105,49 @@ If you have questions concerning this license or the applicable additional terms
 		DWORD	tlsIndex;
 	};
 
+#elif defined(ID_PC_LINUX)
+
+	#include <pthread.h>
+
+	class idSysThreadLocalStorage {
+	public:
+		idSysThreadLocalStorage() { 
+			pthread_key_create(&tlsIndex, NULL);
+		}
+		idSysThreadLocalStorage( const ptrdiff_t &val ) {
+			pthread_key_create(&tlsIndex, NULL);
+			pthread_setspecific(tlsIndex, (void*)val);
+		}
+		~idSysThreadLocalStorage() {
+			pthread_key_delete(tlsIndex);
+		}
+		operator ptrdiff_t() {
+			return (ptrdiff_t)pthread_getspecific(tlsIndex);
+		}
+		const ptrdiff_t & operator = ( const ptrdiff_t &val ) {
+			pthread_setspecific(tlsIndex, (void*)val);
+			return val;
+		}	
+		pthread_key_t	tlsIndex;
+	};
+
+#else
+
+	#error Unknown Platform
+
+#endif
+
 #define ID_TLS idSysThreadLocalStorage
 
 
 #endif // __TYPEINFOGEN__
 
 /*
-================================================================================================
+==============================================================================================
 
 	Platform independent threading functions.
 
-================================================================================================
+==============================================================================================
 */
 
 enum core_t {

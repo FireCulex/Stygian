@@ -1268,6 +1268,7 @@ bool idZipBuilder::Update( const char* zipPath, const char *folder, bool cleanFo
 idZipBuilder::GetFileTime
 ========================
 */
+#if defined(ID_PC_WIN)
 bool idZipBuilder::GetFileTime( const idStr &filename, unsigned long *dostime ) const {
 	{
 		FILETIME filetime;
@@ -1283,6 +1284,20 @@ bool idZipBuilder::GetFileTime( const idStr &filename, unsigned long *dostime ) 
 	}
 	return false;
 }
+#else
+// Linux: use stat
+#include <sys/stat.h>
+bool idZipBuilder::GetFileTime( const idStr &filename, unsigned long *dostime ) const {
+	struct stat st;
+	if ( stat( filename.c_str(), &st ) == 0 ) {
+		// Convert time_t to DOS date/time format
+		struct tm *tm = localtime( &st.st_mtime );
+		*dostime = ( (tm->tm_year - 80) << 25 ) | ( (tm->tm_mon + 1) << 21 ) | ( tm->tm_mday << 16 ) | ( tm->tm_hour << 11 ) | ( tm->tm_min << 5 ) | ( tm->tm_sec >> 1 );
+		return true;
+	}
+	return false;
+}
+#endif
 
 /*
 ========================
@@ -1870,9 +1885,9 @@ CONSOLE_COMMAND( testZipBuilderCombineFiles, "test routine for memory zip file b
 
 	// allocate all the test files
 	for ( int i = 0; i < numFiles; i++ ) {
-		idFile_Memory * file = new idFile_Memory( va( "%s%d.txt", testString, i + 1 ) );
+		idFile_Memory * file = new idFile_Memory( va_format( "%s%d.txt", testString, i + 1 ) );
 		file->MakeWritable();
-		idStr str = va( "%s%d", testString, i + 1 );
+		idStr str = va_format( "%s%d", testString, i + 1 );
 		file->WriteString( str );
 		list.Append( file );
 	}
@@ -1891,7 +1906,7 @@ CONSOLE_COMMAND( testZipBuilderCombineFiles, "test routine for memory zip file b
 		fileSystem->RemoveFile( ospath );
 
 		if ( file->Save( tempName, ospath ) ) {
-			idLib::PrintfIf( zip_verbosity.GetBool(), va( "File written: %s.\n", ospath ) );
+			idLib::PrintfIf( zip_verbosity.GetBool(), va_format( "File written: %s.\n", ospath ) );
 		} else {
 			idLib::Error( "Could not save the file." );
 		}
@@ -1990,9 +2005,9 @@ CONSOLE_COMMAND( testZipBuilderExtractFiles, "test routine for memory zip file e
 	{
 		// allocate all the test files
 		for ( int i = 0; i < numFiles; i++ ) {
-			idFile_Memory * file = new idFile_Memory( va( "%s%d.txt", testString, i + 1 ) );
+			idFile_Memory * file = new idFile_Memory( va_format( "%s%d.txt", testString, i + 1 ) );
 			file->MakeWritable();
-			idStr str = va( "%s%d", testString, i + 1 );
+			idStr str = va_format( "%s%d", testString, i + 1 );
 			file->WriteString( str );
 			list.Append( file );
 		}
@@ -2028,8 +2043,8 @@ CONSOLE_COMMAND( testZipBuilderExtractFiles, "test routine for memory zip file e
 			file->MakeReadOnly();
 			file->ReadString( str );
 
-			idStr filename = va( "%s%d.txt", testString, i + 1 );
-			idStr contents = va( "%s%d", testString, i + 1 );
+			idStr filename = va_format( "%s%d.txt", testString, i + 1 );
+			idStr contents = va_format( "%s%d", testString, i + 1 );
 
 			// test the filename
 			bool nameSuccess = ( file->GetName() == filename );

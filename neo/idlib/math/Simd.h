@@ -57,7 +57,11 @@ public:
 ===============================================================================
 */
 
+#if defined(_MSC_VER)
 #define VPCALL __fastcall
+#else
+#define VPCALL
+#endif
 
 class idVec2;
 class idVec3;

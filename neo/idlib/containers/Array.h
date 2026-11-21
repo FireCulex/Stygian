@@ -57,7 +57,7 @@ public:
 	int				ByteSize() const { return sizeof( ptr ); }
 
 	// memset the entire array to zero
-	void			Zero() { memset( ptr, 0, sizeof( ptr ) ); }
+	void			Zero() { for ( int i = 0; i < numElements; i++ ) { ptr[i] = T_(); } }
 
 	// memset the entire array to a specific value
 	void			Memset( const char fill ) { memset( ptr, fill, numElements * sizeof( *ptr ) ); }

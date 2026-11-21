@@ -224,7 +224,7 @@ float idConsoleLocal::DrawFPS( float y ) {
 		int fps = 1000000 * FPS_FRAMES / total;
 		fps = ( fps + 500 ) / 1000;
 
-		const char * s = va( "%ifps", fps );
+		const char * s = va_format( "%ifps", fps );
 		int w = strlen( s ) * BIGCHAR_WIDTH;
 
 		renderSystem->DrawBigStringExt( LOCALSAFE_RIGHT - w, idMath::Ftoi( y ) + 2, s, colorWhite, true );
@@ -1018,7 +1018,7 @@ void idConsoleLocal::DrawSolidConsole( float frac ) {
 
 	renderSystem->SetColor( idStr::ColorForIndex( C_COLOR_CYAN ) );
 
-	idStr version = va( "%s.%i.%i", ENGINE_VERSION, BUILD_NUMBER, BUILD_NUMBER_MINOR );
+	idStr version = va_format( "%s.%i.%i", ENGINE_VERSION, BUILD_NUMBER, BUILD_NUMBER_MINOR );
 	i = version.Length();
 
 	for ( x = 0; x < i; x++ ) {

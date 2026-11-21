@@ -162,7 +162,7 @@ idResourceContainer::UpdateResourceFile
 ========================
 */ 
 void idResourceContainer::UpdateResourceFile( const char *_filename, const idStrList &_filesToUpdate ) {
-	idFile *outFile = fileSystem->OpenFileWrite( va( "%s.new", _filename ) );
+	idFile *outFile = fileSystem->OpenFileWrite( va_format( "%s.new", _filename ) );
 	if ( outFile == NULL ) {
 		idLib::Warning( "Unable to open resource file %s or new output file", _filename );
 		return;
@@ -408,7 +408,7 @@ void idResourceContainer::WriteResourceFile( const char *manifestName, const idS
 
 		idStr fileName = manifestName;
 		if ( idx > 0 ) {
-			fileName = va( "%s_%02d", manifestName, idx );
+			fileName = va_format( "%s_%02d", manifestName, idx );
 		} 
 		fileName.SetFileExtension( "resources" );
 

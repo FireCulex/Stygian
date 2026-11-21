@@ -243,6 +243,12 @@ Exits with mapSpawned = false
 ===============
 */
 void idCommonLocal::UnloadMap() {
+	Printf( "UnloadMap called\n" );
+	// Print call stack
+	void* stack[32];
+	int frames = 0;
+	// Can't easily print stack trace in this engine
+	fflush(stdout);
 	StopPlayingRenderDemo();
 
 	// end the current map in the game
@@ -368,7 +374,7 @@ void idCommonLocal::LoadLoadingGui( const char *mapName, bool & hellMap ) {
 			txtVal = loadGUI->GetRootObject().GetNestedText( "txtDesc" );
 			if ( txtVal != NULL ) {
 				if ( isHellMap ) {
-					txtVal->SetText( va( "\n%s", desc.c_str() ) );
+					txtVal->SetText( va_format( "\n%s", desc.c_str() ) );
 				} else {
 					txtVal->SetText( desc );
 				}
@@ -721,7 +727,7 @@ void idCommonLocal::UpdateLevelLoadPacifier() {
 		idSWFTextInstance * txtVal = loadGUI->GetRootObject().GetNestedText( "txtDesc" );
 		if ( txtVal != NULL ) {
 			if ( isHellMap ) {
-				txtVal->SetText( va( "\n%s", idLocalization::GetString( tipId ) ) );
+				txtVal->SetText( va_format( "\n%s", idLocalization::GetString( tipId ) ) );
 			} else {
 				txtVal->SetText( idLocalization::GetString( tipId ) );
 			}
@@ -983,7 +989,7 @@ bool HandleCommonErrors( const idSaveLoadParms & parms ) {
 		common->Dialog().AddDialog( GDM_UNABLE_TO_USE_SELECTED_STORAGE_DEVICE, DIALOG_CONTINUE, NULL, NULL, false );
 		return true;
 	} else if ( parms.GetError() & SAVEGAME_E_INVALID_FILENAME ) {
-		idLib::Warning( va( "Invalid savegame filename [%s]!", parms.directory.c_str() ) );
+		idLib::Warning( va_format( "Invalid savegame filename [%s]!", parms.directory.c_str() ) );
 		return true;
 	} else if ( parms.GetError() & SAVEGAME_E_DLC_NOT_FOUND ) {
 		common->Dialog().AddDialog( GDM_DLC_ERROR_MISSING_GENERIC, DIALOG_CONTINUE, NULL, NULL, false );
@@ -1005,9 +1011,11 @@ idCommonLocal::OnSaveCompleted
 ========================
 */
 void idCommonLocal::OnSaveCompleted( idSaveLoadParms & parms ) {
-	assert( pipelineFile != NULL );
-	delete pipelineFile;
-	pipelineFile = NULL;
+	// SDL single-player stub calls this without a pipelineFile in flight; don't assert-crash there
+	if ( pipelineFile != NULL ) {
+		delete pipelineFile;
+		pipelineFile = NULL;
+	}
 
 	if ( parms.GetError() == SAVEGAME_E_NONE ) {
 		game->Shell_UpdateSavedGames();
@@ -1144,6 +1152,12 @@ Restart the server on a different map
 ==================
 */
 CONSOLE_COMMAND_SHIP( map, "loads a map", idCmdSystem::ArgCompletion_MapName ) {
+	// Guard: `map` with no argument used to build "maps/.map" and hit
+	// common->Error -> black screen with no way back.
+	if ( args.Argc() < 2 || args.Argv(1)[0] == '\0' ) {
+		common->Printf( "USAGE: map <mapname>\n" );
+		return;
+	}
 	commonLocal.StartNewGame( args.Argv(1), false, GAME_MODE_SINGLEPLAYER );
 }
 
@@ -1154,7 +1168,7 @@ Common_RestartMap_f
 */
 CONSOLE_COMMAND_SHIP( restartMap, "restarts the current map", NULL ) {
 	if ( g_demoMode.GetBool() ) {
-		cmdSystem->AppendCommandText( va( "devmap %s %d\n", commonLocal.GetCurrentMapName(), 0 ) );
+		cmdSystem->AppendCommandText( va_format( "devmap %s %d\n", commonLocal.GetCurrentMapName(), 0 ) );
 	}
 }
 

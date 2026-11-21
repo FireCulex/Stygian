@@ -25,25 +25,9 @@ If you have questions concerning this license or the applicable additional terms
 
 ===========================================================================
 */
+
 #ifndef SYS_DEFINES_H
 #define SYS_DEFINES_H
-
-/*
-================================================================================================
-
-	Platform Specific ID_ Defines
-
-	The ID_ defines are the only platform defines we should be using.
-
-================================================================================================
-*/
-
-#undef ID_PC
-#undef ID_PC_WIN
-#undef ID_PC_WIN64
-#undef ID_CONSOLE
-#undef ID_WIN32
-#undef ID_LITTLE_ENDIAN
 
 #if defined(_WIN32)
 	// _WIN32 always defined
@@ -73,6 +57,12 @@ If you have questions concerning this license or the applicable additional terms
 	#define ID_PC
 	#define ID_PC_WIN
 	#define ID_WIN32
+	#define ID_LITTLE_ENDIAN
+#elif defined(__linux__) || defined(__APPLE__) || defined(__FreeBSD__)
+	// Linux, macOS, FreeBSD
+	#define ID_PC
+	#define ID_PC_LINUX
+	#define ID_LINUX
 	#define ID_LITTLE_ENDIAN
 #else
 #error Unknown Platform
@@ -124,6 +114,44 @@ If you have questions concerning this license or the applicable additional terms
 
 #endif
 
+#ifdef ID_PC_LINUX
+
+#define	CPUSTRING						"x86"
+
+#define	BUILD_STRING					"linux-" CPUSTRING
+#define BUILD_OS_ID						1
+
+#define ALIGN16( x )					__attribute__((aligned(16))) x
+#define ALIGNTYPE16						__attribute__((aligned(16)))
+#define ALIGNTYPE128					__attribute__((aligned(128)))
+#define FORMAT_PRINTF( x )
+
+#define PATHSEPARATOR_STR				"/"
+#define PATHSEPARATOR_CHAR				'/'
+#define NEWLINE							"\n"
+
+#define ID_INLINE						inline
+#define ID_FORCE_INLINE					inline __attribute__((always_inline))
+
+// lint complains that extern used with definition is a hazard, but it
+// has the benefit (?) of making it illegal to take the address of the function
+#ifdef _lint
+#define ID_INLINE_EXTERN				inline
+#define ID_FORCE_INLINE_EXTERN			inline __attribute__((always_inline))
+#else
+#define ID_INLINE_EXTERN				inline
+#define ID_FORCE_INLINE_EXTERN			inline __attribute__((always_inline))
+#endif
+
+#define _alloca alloca
+#define _alloca16(x) alloca(x)
+#define _alloca128(x) alloca(x)
+
+// MSVC compatibility shims
+#define _atoi64( x )				strtoll( (x), NULL, 10 )
+
+#endif
+
 /*
 ================================================================================================
 
@@ -134,45 +162,11 @@ Defines and macros usable in all code
 
 #define ALIGN( x, a ) ( ( ( x ) + ((a)-1) ) & ~((a)-1) )
 
-#define _alloca16( x )					((void *)ALIGN( (UINT_PTR)_alloca( ALIGN( x, 16 ) + 16 ), 16 ) )
-#define _alloca128( x )					((void *)ALIGN( (UINT_PTR)_alloca( ALIGN( x, 128 ) + 128 ), 128 ) )
+#define _alloca16( x )					((void *)ALIGN( (uintptr_t)alloca( ALIGN( x, 16 ) + 16 ), 16 ) )
+#define _alloca128( x )					((void *)ALIGN( (uintptr_t)alloca( ALIGN( x, 128 ) + 128 ), 128 ) )
 
 #define likely( x )	( x )
 #define unlikely( x )	( x )
-
-// A macro to disallow the copy constructor and operator= functions
-// NOTE: The macro contains "private:" so all members defined after it will be private until
-// public: or protected: is specified.
-#define DISALLOW_COPY_AND_ASSIGN(TypeName)	\
-private:									\
-  TypeName(const TypeName&);				\
-  void operator=(const TypeName&);
-
-
-/*
-================================================================================================
-Setup for /analyze code analysis, which we currently only have on the 360, but
-we may get later for win32 if we buy the higher end vc++ licenses.
-
-Even with VS2010 ultmate, /analyze only works for x86, not x64
-
-Also note the __analysis_assume macro in sys_assert.h relates to code analysis.
-
-This header should be included even by job code that doesn't reference the
-bulk of the codebase, so it is the best place for analyze pragmas.
-================================================================================================
-*/
-
-#if defined( ID_WIN32 )
-
-// disable some /analyze warnings here
-#pragma warning( disable: 6255 )	// warning C6255: _alloca indicates failure by raising a stack overflow exception. Consider using _malloca instead. (Note: _malloca requires _freea.)
-#pragma warning( disable: 6262 )	// warning C6262: Function uses '36924' bytes of stack: exceeds /analyze:stacksize'32768'. Consider moving some data to heap
-#pragma warning( disable: 6326 )	// warning C6326: Potential comparison of a constant with another constant
-
-#pragma warning( disable: 6031 )	//  warning C6031: Return value ignored
-// this warning fires whenever you have two calls to new in a function, but we assume new never fails, so it is not relevant for us
-#pragma warning( disable: 6211 )	// warning C6211: Leaking memory 'staticModel' due to an exception. Consider using a local catch block to clean up memory
 
 // we want to fix all these at some point...
 #pragma warning( disable: 6246 )	// warning C6246: Local declaration of 'es' hides declaration of the same name in outer scope. For additional information, see previous declaration at line '969' of 'w:\tech5\rage\game\ai\fsm\fsm_combat.cpp': Lines: 969
@@ -183,15 +177,28 @@ bulk of the codebase, so it is the best place for analyze pragmas.
 
 
 // checking format strings catches a LOT of errors
+#if defined(_MSC_VER) && !defined(__MINGW32__) && !defined(__MINGW64__) && !defined(__GNUC__)
 #include <CodeAnalysis\SourceAnnotations.h>
 #define	VERIFY_FORMAT_STRING	[SA_FormatString(Style="printf")]
+#else
+// MinGW/GCC/Clang doesn't have CodeAnalysis headers
+#define VERIFY_FORMAT_STRING
+#endif
 
+// checking format strings catches a LOT of errors (Linux/macOS)
+#if defined(__GNUC__) || defined(__clang__)
+#define VERIFY_FORMAT_STRING __attribute__((format(printf, 1, 2)))
+#else
+#define VERIFY_FORMAT_STRING
+#endif
 
 // We need to inform the compiler that Error() and FatalError() will
 // never return, so any conditions that leeds to them being called are
 // guaranteed to be false in the following code
+#ifdef _MSC_VER
 #define NO_RETURN __declspec(noreturn)
-
+#else
+#define NO_RETURN __attribute__((noreturn))
 #endif
 
 // I don't want to disable "warning C6031: Return value ignored" from /analyze
@@ -208,5 +215,8 @@ extern volatile int ignoredReturnValue;
 #define MIN_TYPE( x )			( - MAX_TYPE( x ) - 1 )
 #define MAX_UNSIGNED_TYPE( x )	( ( ( ( 1U << ( ( sizeof( x ) - 1 ) * 8 ) ) - 1 ) << 8 ) | 255U )
 #define MIN_UNSIGNED_TYPE( x )	0
+
+// Disable copy constructor and assignment operator
+#define DISALLOW_COPY_AND_ASSIGN( TypeName ) 	TypeName( const TypeName& ) = delete; 	void operator=( const TypeName& ) = delete
 
 #endif

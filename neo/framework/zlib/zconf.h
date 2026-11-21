@@ -219,7 +219,9 @@
 #    ifdef FAR
 #      undef FAR
 #    endif
-#    include <windows.h>
+#    if defined(_WIN32) || defined(__CYGWIN__) || defined(__MINGW32__) || defined(__MINGW64__)
+#      include <windows.h>
+#    endif
      /* No need for _export, use ZLIB.DEF instead. */
      /* For complete Windows compatibility, use WINAPI, not __stdcall. */
 #    define ZEXPORT WINAPI

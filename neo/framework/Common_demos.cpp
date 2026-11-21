@@ -137,7 +137,7 @@ void idCommonLocal::StopPlayingRenderDemo() {
 		// report the stats
 		float	demoSeconds = ( timeDemoStopTime - timeDemoStartTime ) * 0.001f;
 		float	demoFPS = numDemoFrames / demoSeconds;
-		idStr	message = va( "%i frames rendered in %3.1f seconds = %3.1f fps\n", numDemoFrames, demoSeconds, demoFPS );
+		idStr	message = va_format( "%i frames rendered in %3.1f seconds = %3.1f fps\n", numDemoFrames, demoSeconds, demoFPS );
 
 		common->Printf( message );
 		if ( timeDemo == TD_YES_THEN_QUIT ) {
@@ -252,7 +252,7 @@ void idCommonLocal::BeginAVICapture( const char *demoName ) {
 	name.ExtractFileBase( aviDemoShortName );
 	aviCaptureMode = true;
 	aviDemoFrameCount = 0;
-	soundWorld->AVIOpen( va( "demos/%s/", aviDemoShortName.c_str() ), aviDemoShortName.c_str() );
+	soundWorld->AVIOpen( va_format( "demos/%s/", aviDemoShortName.c_str() ), aviDemoShortName.c_str() );
 }
 
 /*
@@ -268,7 +268,7 @@ void idCommonLocal::EndAVICapture() {
 	soundWorld->AVIClose();
 
 	// write a .roqParam file so the demo can be converted to a roq file
-	idFile *f = fileSystem->OpenFileWrite( va( "demos/%s/%s.roqParam", 
+	idFile *f = fileSystem->OpenFileWrite( va_format( "demos/%s/%s.roqParam", 
 		aviDemoShortName.c_str(), aviDemoShortName.c_str() ) );
 	f->Printf( "INPUT_DIR demos/%s\n", aviDemoShortName.c_str() );
 	f->Printf( "FILENAME demos/%s/%s.RoQ\n", aviDemoShortName.c_str(), aviDemoShortName.c_str() );
@@ -289,7 +289,7 @@ idCommonLocal::AVIRenderDemo
 ================
 */
 void idCommonLocal::AVIRenderDemo( const char *_demoName ) {
-	idStr	demoName = _demoName;	// copy off from va() buffer
+	idStr	demoName = _demoName;	// copy off from va_format() buffer
 
 	StartPlayingRenderDemo( demoName );
 	if ( !readDemo ) {
@@ -426,7 +426,7 @@ CONSOLE_COMMAND( demoShot, "writes a screenshot as a demo", NULL ) {
 		idStr filename = FindUnusedFileName( "demos/shot%03i.demo" );
 		commonLocal.DemoShot( filename );
 	} else {
-		commonLocal.DemoShot( va( "demos/shot_%s.demo", args.Argv(1) ) );
+		commonLocal.DemoShot( va_format( "demos/shot_%s.demo", args.Argv(1) ) );
 	}
 }
 
@@ -440,7 +440,7 @@ CONSOLE_COMMAND( recordDemo, "records a demo", NULL ) {
 		idStr filename = FindUnusedFileName( "demos/demo%03i.demo" );
 		commonLocal.StartRecordingRenderDemo( filename );
 	} else {
-		commonLocal.StartRecordingRenderDemo( va( "demos/%s.demo", args.Argv(1) ) );
+		commonLocal.StartRecordingRenderDemo( va_format( "demos/%s.demo", args.Argv(1) ) );
 	}
 }
 
@@ -475,7 +475,7 @@ Common_PlayDemo_f
 */
 CONSOLE_COMMAND( playDemo, "plays back a demo", idCmdSystem::ArgCompletion_DemoName ) {
 	if ( args.Argc() >= 2 ) {
-		commonLocal.StartPlayingRenderDemo( va( "demos/%s", args.Argv(1) ) );
+		commonLocal.StartPlayingRenderDemo( va_format( "demos/%s", args.Argv(1) ) );
 	}
 }
 
@@ -486,7 +486,7 @@ Common_TimeDemo_f
 */
 CONSOLE_COMMAND( timeDemo, "times a demo", idCmdSystem::ArgCompletion_DemoName ) {
 	if ( args.Argc() >= 2 ) {
-		commonLocal.TimeRenderDemo( va( "demos/%s", args.Argv(1) ), ( args.Argc() > 2 ), false );
+		commonLocal.TimeRenderDemo( va_format( "demos/%s", args.Argv(1) ), ( args.Argc() > 2 ), false );
 	}
 }
 
@@ -496,7 +496,7 @@ Common_TimeDemoQuit_f
 ================
 */
 CONSOLE_COMMAND( timeDemoQuit, "times a demo and quits", idCmdSystem::ArgCompletion_DemoName ) {
-	commonLocal.TimeRenderDemo( va( "demos/%s", args.Argv(1) ), true );
+	commonLocal.TimeRenderDemo( va_format( "demos/%s", args.Argv(1) ), true );
 }
 
 /*
@@ -505,7 +505,7 @@ Common_AVIDemo_f
 ================
 */
 CONSOLE_COMMAND( aviDemo, "writes AVIs for a demo", idCmdSystem::ArgCompletion_DemoName ) {
-	commonLocal.AVIRenderDemo( va( "demos/%s", args.Argv(1) ) );
+	commonLocal.AVIRenderDemo( va_format( "demos/%s", args.Argv(1) ) );
 }
 
 /*

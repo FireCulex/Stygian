@@ -931,7 +931,7 @@ void idCVarSystemLocal::Toggle_f( const idCmdArgs &args ) {
 		}
 
 		common->Printf( "set %s = %s\n", args.Argv(1), args.Argv( i ) );
-		cvar->Set( va("%s", args.Argv( i ) ), false, false );
+		cvar->Set( va_format("%s", args.Argv( i ) ), false, false );
 	} else {
 		// toggle between 0 and 1
 		current = cvar->GetFloat();

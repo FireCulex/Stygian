@@ -178,7 +178,7 @@ void idTokenParser::UnreadToken( const idToken *token ) {
 	}
 	currentToken--;
 }
-void idTokenParser::Error( VERIFY_FORMAT_STRING const char *str, ... ) {
+void idTokenParser::Error( const char *str, ... ) {
 	char text[MAX_STRING_CHARS];
 	va_list ap;
 
@@ -188,7 +188,7 @@ void idTokenParser::Error( VERIFY_FORMAT_STRING const char *str, ... ) {
 
 	idLib::common->Warning( text );
 }
-void idTokenParser::Warning( VERIFY_FORMAT_STRING const char *str, ... ) {
+void idTokenParser::Warning( const char *str, ... ) {
 	char text[MAX_STRING_CHARS];
 	va_list ap;
 

@@ -275,7 +275,7 @@ void idCmdSystemLocal::Vstr_f( const idCmdArgs &args ) {
 
 	v = cvarSystem->GetCVarString( args.Argv( 1 ) );
 
-	cmdSystemLocal.BufferCommandText( CMD_EXEC_APPEND, va( "%s\n", v ) );
+	cmdSystemLocal.BufferCommandText( CMD_EXEC_APPEND, va_format( "%s\n", v ) );
 }
 
 /*

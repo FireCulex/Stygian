@@ -130,15 +130,15 @@ public:
 	virtual void				BeginRedirect( char *buffer, int buffersize, void (*flush)( const char * ) );
 	virtual void				EndRedirect();
 	virtual void				SetRefreshOnPrint( bool set );
-	virtual void				Printf( VERIFY_FORMAT_STRING const char *fmt, ... );
+	virtual void				Printf( const char *fmt, ... );
 	virtual void				VPrintf( const char *fmt, va_list arg );
-	virtual void				DPrintf( VERIFY_FORMAT_STRING const char *fmt, ... );
-	virtual void				Warning( VERIFY_FORMAT_STRING const char *fmt, ... );
-	virtual void				DWarning( VERIFY_FORMAT_STRING const char *fmt, ...);
+	virtual void				DPrintf( const char *fmt, ... );
+	virtual void				Warning( const char *fmt, ... );
+	virtual void				DWarning( const char *fmt, ...);
 	virtual void				PrintWarnings();
 	virtual void				ClearWarnings( const char *reason );
-	virtual void				Error( VERIFY_FORMAT_STRING const char *fmt, ... );
-	virtual void				FatalError( VERIFY_FORMAT_STRING const char *fmt, ... );
+	virtual void				Error( const char *fmt, ... );
+	virtual void				FatalError( const char *fmt, ... );
 	virtual bool				IsShuttingDown() const { return com_shuttingDown; }
 
 	virtual const char *		KeysFromBinding( const char *bind );
@@ -494,10 +494,10 @@ private:
 	
 	void	ScrubSaveGameFileName( idStr &saveFileName ) const;
 
-	// Doom classic support
-	void	RunDoomClassicFrame();
-	void	RenderDoomClassic();
-	bool	IsPlayingDoomClassic() const { return GetCurrentGame() != DOOM3_BFG; }
+	// Doom classic support (disabled)
+	// void	RunDoomClassicFrame();
+	// void	RenderDoomClassic();
+	bool	IsPlayingDoomClassic() const { return false; }
 	void	PerformGameSwitch();
 };
 

@@ -144,14 +144,14 @@ void GetFileList(const char* dir, const char* ext, idStrList& list) {
 		if(dirList[i] == "." || dirList[i] == "..") {
 			continue;
 		}
-		idStr fullName = va("%s/%s", dir, dirList[i].c_str());
+		idStr fullName = va_format("%s/%s", dir, dirList[i].c_str());
 		GetFileList(fullName, ext, list);
 	}
 
 	idStrList fileList;
 	Sys_ListFiles(dir, ext, fileList);
 	for(int i = 0; i < fileList.Num(); i++) {
-		idStr fullName = va("%s/%s", dir, fileList[i].c_str());
+		idStr fullName = va_format("%s/%s", dir, fileList[i].c_str());
 		list.Append(fullName);
 	}
 }
@@ -270,7 +270,7 @@ CONSOLE_COMMAND( localizeMaps, "localize maps", NULL ) {
 	}
 
 	idLangDict strTable;
-	idStr filename = va("strings/english%.3i.lang", com_product_lang_ext.GetInteger());
+	idStr filename = va_format("strings/english%.3i.lang", com_product_lang_ext.GetInteger());
 
 	{
 		// I think this is equivalent...
@@ -332,7 +332,7 @@ CONSOLE_COMMAND( localizeGuis, "localize guis", NULL ) {
 
 	idLangDict strTable;
 
-	idStr filename = va("strings/english%.3i.lang", com_product_lang_ext.GetInteger());
+	idStr filename = va_format("strings/english%.3i.lang", com_product_lang_ext.GetInteger());
 
 	{
 		// I think this is equivalent...
@@ -407,10 +407,10 @@ CONSOLE_COMMAND( localizeGuiParmsTest, "Create test files that show gui parms lo
 					const idKeyValue* kv = ent->epairs.MatchPrefix("gui_parm");
 					while( kv ) {
 						if(TestGuiParm(kv->GetKey(), kv->GetValue(), excludeList)) {
-							idStr out = va("%s,%s,%s\r\n", kv->GetValue().c_str(), kv->GetKey().c_str(), file.c_str());
+							idStr out = va_format("%s,%s,%s\r\n", kv->GetValue().c_str(), kv->GetKey().c_str(), file.c_str());
 							localizeFile->Write( out.c_str(), out.Length() );
 						} else {
-							idStr out = va("%s,%s,%s\r\n", kv->GetValue().c_str(), kv->GetKey().c_str(), file.c_str());
+							idStr out = va_format("%s,%s,%s\r\n", kv->GetValue().c_str(), kv->GetKey().c_str(), file.c_str());
 							noLocalizeFile->Write( out.c_str(), out.Length() );
 						}
 						kv = ent->epairs.MatchPrefix( "gui_parm", kv );
@@ -459,7 +459,7 @@ CONSOLE_COMMAND( localizeMapsTest, "Create test files that shows which strings w
 					}
 					for( int i = 0; i < ent->epairs.GetNumKeyVals(); i++) {
 						const idKeyValue* kv = ent->epairs.GetKeyVal(i);
-						idStr out = va("%s,%s,%s,%s\r\n", classname.c_str(), kv->GetKey().c_str(), kv->GetValue().c_str(), file.c_str());
+						idStr out = va_format("%s,%s,%s,%s\r\n", classname.c_str(), kv->GetKey().c_str(), kv->GetValue().c_str(), file.c_str());
 						localizeFile->Write( out.c_str(), out.Length() );
 					}*/
 
@@ -483,7 +483,7 @@ CONSOLE_COMMAND( localizeMapsTest, "Create test files that shows which strings w
 							if(val.Length() && TestMapVal(val)) {
 								
 								if(!hasLocation || (*list)[k] == "location") {
-									idStr out = va("%s,%s,%s\r\n", val.c_str(), (*list)[k].c_str(), file.c_str());
+									idStr out = va_format("%s,%s,%s\r\n", val.c_str(), (*list)[k].c_str(), file.c_str());
 									localizeFile->Write( out.c_str(), out.Length() );
 								}
 							}
@@ -495,7 +495,7 @@ CONSOLE_COMMAND( localizeMapsTest, "Create test files that shows which strings w
 						for(int k = 0; k < list->Num(); k++) {
 							idStr val = ent->epairs.GetString((*list)[k], "");
 							if(val.Length() && TestMapVal(val)) {
-								idStr out = va("%s,%s,%s\r\n", val.c_str(), (*list)[k].c_str(), file.c_str());
+								idStr out = va_format("%s,%s,%s\r\n", val.c_str(), (*list)[k].c_str(), file.c_str());
 								localizeFile->Write( out.c_str(), out.Length() );
 							}
 						}
@@ -611,7 +611,7 @@ void idCommonLocal::LocalizeGui( const char *fileName, idLangDict &langDict ) {
 				src.GetLastWhiteSpace( ws );
 				out += ws;
 				if ( token.type == TT_STRING ) {
-					out += va( "\"%s\"", token.c_str() );
+					out += va_format( "\"%s\"", token.c_str() );
 				} else {
 					out += token;
 				}

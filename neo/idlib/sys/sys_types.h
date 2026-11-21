@@ -145,7 +145,11 @@ ID_INLINE void WriteIndexPair( triIndex_t * dest, const triIndex_t a, const triI
 #if defined(_DEBUG) || defined(_lint)
 #define NODEFAULT	default: assert( 0 )
 #else
+#if defined(ID_PC_WIN)
 #define NODEFAULT	default: __assume( 0 )
+#else
+#define NODEFAULT	default: __builtin_unreachable()
+#endif
 #endif
 
 /*

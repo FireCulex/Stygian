@@ -32,8 +32,6 @@ If you have questions concerning this license or the applicable additional terms
 #include "Common_local.h"
 #include "../renderer/Image.h"
 #include "../renderer/ImageOpts.h"
-#include "../../doomclassic/doom/doomlib.h"
-#include "../../doomclassic/doom/globaldata.h"
 
 /*
 
@@ -216,6 +214,7 @@ void idCommonLocal::Draw() {
 
 	if ( loadGUI != NULL ) {
 		loadGUI->Render( renderSystem, Sys_Milliseconds() );
+	#if 0
 	} else if ( currentGame == DOOM_CLASSIC || currentGame == DOOM2_CLASSIC ) {
 		const float sysWidth = renderSystem->GetWidth() * renderSystem->GetPixelAspect();
 		const float sysHeight = renderSystem->GetHeight();
@@ -229,6 +228,8 @@ void idCommonLocal::Draw() {
 			renderSystem->DrawStretchPic( 0, 0, SCREEN_WIDTH, barHeight, 0, 0, 1, 1, whiteMaterial );
 			renderSystem->DrawStretchPic( 0, SCREEN_HEIGHT - barHeight, SCREEN_WIDTH, barHeight, 0, 0, 1, 1, whiteMaterial );
 		}
+#endif
+#if 0
 		if ( barWidth > 0.0f ) {
 			renderSystem->SetColor( colorBlack );
 			renderSystem->DrawStretchPic( 0, 0, barWidth, SCREEN_HEIGHT, 0, 0, 1, 1, whiteMaterial );
@@ -236,6 +237,7 @@ void idCommonLocal::Draw() {
 		}
 		renderSystem->SetColor4( 1, 1, 1, 1 );
 		renderSystem->DrawStretchPic( barWidth, barHeight, SCREEN_WIDTH - barWidth * 2.0f, SCREEN_HEIGHT - barHeight * 2.0f, 0, 0, 1, 1, doomClassicMaterial );
+#endif
 	} else if ( game && game->Shell_IsActive() ) {
 		bool gameDraw = game->Draw( game->GetLocalClientNum() );
 		if ( !gameDraw ) {
@@ -368,6 +370,9 @@ void idCommonLocal::Frame() {
 	try {
 		SCOPED_PROFILE_EVENT( "Common::Frame" );
 
+		//Printf("Frame: start\n");
+		fflush(stdout);
+
 		// This is the only place this is incremented
 		idLib::frameNumber++;
 
@@ -379,15 +384,23 @@ void idCommonLocal::Frame() {
 
 		// Do the actual switch between Doom 3 and the classics here so
 		// that things don't get confused in the middle of the frame.
+		//Printf("Frame: before PerformGameSwitch\n");
 		PerformGameSwitch();
+		//Printf("Frame: after PerformGameSwitch\n");
 
 		// pump all the events
+		//Printf("Frame: before Sys_GenerateEvents\n");
 		Sys_GenerateEvents();
+		//Printf("Frame: after Sys_GenerateEvents\n");
 
 		// write config file if anything changed
+		//Printf("Frame: before WriteConfiguration\n");
 		WriteConfiguration(); 
+		//Printf("Frame: after WriteConfiguration\n");
 
+		//Printf("Frame: before eventLoop->RunEventLoop\n");
 		eventLoop->RunEventLoop();
+		//Printf("Frame: after eventLoop->RunEventLoop\n");
 
 		// Activate the shell if it's been requested
 		if ( showShellRequested && game ) {
@@ -397,7 +410,7 @@ void idCommonLocal::Frame() {
 
 		// if the console or another gui is down, we don't need to hold the mouse cursor
 		bool chatting = false;
-		if ( console->Active() || Dialog().IsDialogActive() || session->IsSystemUIShowing() || ( game && game->InhibitControls() && !IsPlayingDoomClassic() ) ) {
+		if ( console->Active() || Dialog().IsDialogActive() || session->IsSystemUIShowing() || ( game && game->InhibitControls() ) ) {
 			Sys_GrabMouseCursor( false );
 			usercmdGen->InhibitUsercmd( INHIBIT_SESSION, true );
 			chatting = true;
@@ -406,11 +419,11 @@ void idCommonLocal::Frame() {
 			usercmdGen->InhibitUsercmd( INHIBIT_SESSION, false );
 		}
 
-		const bool pauseGame = ( !mapSpawned || ( !IsMultiplayer() && ( Dialog().IsDialogPausing() || session->IsSystemUIShowing() || ( game && game->Shell_IsActive() ) ) ) ) && !IsPlayingDoomClassic();
+		const bool pauseGame = ( !mapSpawned || ( !IsMultiplayer() && ( Dialog().IsDialogPausing() || session->IsSystemUIShowing() || ( game && game->Shell_IsActive() ) ) ) );
 
 		// save the screenshot and audio from the last draw if needed
 		if ( aviCaptureMode ) {
-			idStr name = va("demos/%s/%s_%05i.tga", aviDemoShortName.c_str(), aviDemoShortName.c_str(), aviDemoFrameCount++ );
+			idStr name = va_format("demos/%s/%s_%05i.tga", aviDemoShortName.c_str(), aviDemoShortName.c_str(), aviDemoFrameCount++ );
 			renderSystem->TakeScreenshot( com_aviDemoWidth.GetInteger(), com_aviDemoHeight.GetInteger(), name, com_aviDemoSamples.GetInteger(), NULL );
 
 			// remove any printed lines at the top before taking the screenshot
@@ -614,10 +627,12 @@ void idCommonLocal::Frame() {
 			userCmdMgr.PutUserCmdForPlayer( game->GetLocalClientNum(), newCmd );
 		}
 
+		#if 0
 		// If we're in Doom or Doom 2, run tics and upload the new texture.
 		if ( ( GetCurrentGame() == DOOM_CLASSIC || GetCurrentGame() == DOOM2_CLASSIC ) && !( Dialog().IsDialogPausing() || session->IsSystemUIShowing() ) ) {
 			RunDoomClassicFrame();
 		}
+#endif
 		
 		// start the game / draw command generation thread going in the background
 		gameReturn_t ret = gameThread.RunGameAndDraw( numGameFrames, userCmdMgr, IsClient(), gameFrame - numGameFrames );
@@ -701,6 +716,7 @@ void idCommonLocal::Frame() {
 	}
 }
 
+#if 0
 /*
 =================
 idCommonLocal::RunDoomClassicFrame
@@ -712,13 +728,13 @@ void idCommonLocal::RunDoomClassicFrame() {
 	if( DoomLib::expansionDirty ) {
 
 		// re-Initialize the Doom Engine.
-		DoomLib::Interface.Shutdown();
-		DoomLib::Interface.Startup( 1, false );
+		if ( DoomLib::g_DoomInterface != nullptr ) DoomLib::g_DoomInterface->Shutdown();
+		if ( DoomLib::g_DoomInterface != nullptr ) DoomLib::g_DoomInterface->Startup( 1, false );
 		DoomLib::expansionDirty = false;
 	}
 
 
-	if ( DoomLib::Interface.Frame( doomTics, &userCmdMgr ) ) {
+	if ( DoomLib::g_DoomInterface != nullptr && DoomLib::g_DoomInterface->Frame( doomTics, &userCmdMgr ) ) {
 		Globals *data = (Globals*)DoomLib::GetGlobalData( 0 );
 
 		idArray< unsigned int, 256 > palette;
@@ -746,3 +762,4 @@ void idCommonLocal::RunDoomClassicFrame() {
 	renderSystem->UploadImage( "_doomClassic", doomClassicImageData.Ptr(), DOOMCLASSIC_RENDERWIDTH, DOOMCLASSIC_RENDERHEIGHT );
 	doomTics++;
 }
+#endif

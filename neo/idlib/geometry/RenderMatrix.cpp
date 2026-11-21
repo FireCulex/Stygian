@@ -1013,7 +1013,7 @@ idRenderMatrix::Inverse
 
 inverse( M ) = ( 1 / determinant( M ) ) * transpose( cofactor( M ) )
 
-This code is based on the code written by Cédric Lallain, published on "Cell Performance"
+This code is based on the code written by Cï¿½dric Lallain, published on "Cell Performance"
 (by Mike Acton) and released under the BSD 3-Clause ("BSD New" or "BSD Simplified") license.
 https://code.google.com/p/cellperformance-snippets/
 
@@ -4375,11 +4375,91 @@ void idRenderMatrix::GetFrustumCorners( frustumCorners_t & corners, const idRend
 
 /*
 ========================
+idRenderMatrix::LookAt
+========================
+*/
+void idRenderMatrix::LookAt( const idVec3 & eye, const idVec3 & target, const idVec3 & up ) {
+	CreateLookAtMatrix( eye, target, up, *this );
+}
+
+/*
+========================
+idRenderMatrix::Perspective
+========================
+*/
+void idRenderMatrix::Perspective( float fovYDegrees, float aspect, float zNear, float zFar ) {
+	CreatePerspectiveMatrix( fovYDegrees, aspect, zNear, zFar, *this );
+}
+
+/*
+========================
+idRenderMatrix::Ortho
+========================
+*/
+void idRenderMatrix::Ortho( float left, float right, float bottom, float top, float zNear, float zFar ) {
+	CreateOrthoMatrix( left, right, bottom, top, zNear, zFar, *this );
+}
+
+/*
+========================
+idRenderMatrix::CreateLookAtMatrix
+======================
+*/
+void idRenderMatrix::CreateLookAtMatrix( const idVec3 & eye, const idVec3 & target, const idVec3 & up, idRenderMatrix & out ) {
+	idVec3 zaxis = eye - target;
+	zaxis.Normalize();
+	idVec3 xaxis = up.Cross( zaxis );
+	xaxis.Normalize();
+	idVec3 yaxis = zaxis.Cross( xaxis );
+
+	out[0][0] = xaxis[0]; out[0][1] = yaxis[0]; out[0][2] = zaxis[0]; out[0][3] = 0.0f;
+	out[1][0] = xaxis[1]; out[1][1] = yaxis[1]; out[1][2] = zaxis[1]; out[1][3] = 0.0f;
+	out[2][0] = xaxis[2]; out[2][1] = yaxis[2]; out[2][2] = zaxis[2]; out[2][3] = 0.0f;
+	out[3][0] = -xaxis * eye;
+	out[3][1] = -yaxis * eye;
+	out[3][2] = -zaxis * eye;
+	out[3][3] = 1.0f;
+}
+
+/*
+========================
+idRenderMatrix::CreatePerspectiveMatrix
+======================
+*/
+void idRenderMatrix::CreatePerspectiveMatrix( float fovYDegrees, float aspect, float zNear, float zFar, idRenderMatrix & out ) {
+	float f = 1.0f / idMath::Tan( DEG2RAD( fovYDegrees ) * 0.5f );
+
+	out.Zero();
+	out[0][0] = f / aspect;
+	out[1][1] = f;
+	out[2][2] = (zFar + zNear) / (zNear - zFar);
+	out[2][3] = -1.0f;
+	out[3][2] = (2.0f * zFar * zNear) / (zNear - zFar);
+	out[3][3] = 0.0f;
+}
+
+/*
+========================
+idRenderMatrix::CreateOrthoMatrix
+======================
+*/
+void idRenderMatrix::CreateOrthoMatrix( float left, float right, float bottom, float top, float zNear, float zFar, idRenderMatrix & out ) {
+	out.Zero();
+	out[0][0] = 2.0f / (right - left);
+	out[1][1] = 2.0f / (top - bottom);
+	out[2][2] = -2.0f / (zFar - zNear);
+	out[0][3] = -(right + left) / (right - left);
+	out[1][3] = -(top + bottom) / (top - bottom);
+	out[2][3] = -(zFar + zNear) / (zFar - zNear);
+	out[3][3] = 1.0f;
+}
+
+/*
+========================
 idRenderMatrix::CullFrustumCornersToPlane
 ========================
 */
 frustumCull_t idRenderMatrix::CullFrustumCornersToPlane( const frustumCorners_t & corners, const idPlane & plane ) {
-	assert_16_byte_aligned( &corners );
 
 #ifdef ID_WIN_X86_SSE2_INTRIN
 

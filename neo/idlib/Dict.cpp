@@ -729,7 +729,7 @@ void idDict::WriteToIniFile( idFile * f ) const {
 			prefixIndex[i] = 0;
 
 			// output all the prefix-less first
-			idStr str = va( "%s=%s\n", kv->GetKey().c_str(), idStr::CStyleQuote( kv->GetValue() ) );
+			idStr str = va_format( "%s=%s\n", kv->GetKey().c_str(), idStr::CStyleQuote( kv->GetValue() ) );
 			f->Write( (void *)str.c_str(), str.Length() );
 
 			skipFirstLine = "\n";
@@ -750,12 +750,12 @@ void idDict::WriteToIniFile( idFile * f ) const {
 			prefixLength = prefixList[prevPrefixIndex - 1].Length() + 1; // to skip past the '/' too
 
 			// output prefix
-			idStr str = va( "%s[%s]\n", skipFirstLine.c_str(), prefixList[prevPrefixIndex - 1].c_str() );
+			idStr str = va_format( "%s[%s]\n", skipFirstLine.c_str(), prefixList[prevPrefixIndex - 1].c_str() );
 			f->Write( (void *)str.c_str(), str.Length() );
 		}
 
 		const idKeyValue * kv = &sortedArgs[i];
-		idStr str = va( "%s=%s\n", kv->GetKey().c_str() + prefixLength, idStr::CStyleQuote( kv->GetValue() ) );
+		idStr str = va_format( "%s=%s\n", kv->GetKey().c_str() + prefixLength, idStr::CStyleQuote( kv->GetValue() ) );
 		f->Write( (void *)str.c_str(), str.Length() );
 	}
 }
@@ -816,7 +816,7 @@ bool idDict::ReadFromIniFile( idFile * f ) {
 
 		valueStr = idStr::CStyleUnQuote( valueStr );
 
-		idStr key = va( "%s%s", prefix.c_str(), token.c_str() );
+		idStr key = va_format( "%s%s", prefix.c_str(), token.c_str() );
 		if ( FindKey( key.c_str() ) ) {
 			parser.Warning( "'%s' already defined", key.c_str() );
 		}

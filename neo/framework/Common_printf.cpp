@@ -155,7 +155,11 @@ void idCommonLocal::VPrintf( const char *fmt, va_list args ) {
 	}
 #endif
 	if ( !idLib::IsMainThread() ) {
+#if defined(ID_PC_WIN)
 		OutputDebugString( msg );
+#else
+		fprintf( stderr, "%s", msg );
+#endif
 		return;
 	}
 
@@ -397,7 +401,13 @@ void idCommonLocal::DumpWarnings() {
 #ifndef ID_DEBUG
 		idStr	osPath;
 		osPath = fileSystem->RelativePathToOSPath( "warnings.txt", "fs_savepath" );
-		WinExec( va( "Notepad.exe %s", osPath.c_str() ), SW_SHOW );
+#if defined(ID_PC_WIN)
+		WinExec( va_format( "Notepad.exe %s", osPath.c_str() ), SW_SHOW );
+#else
+		// On Linux, we could use xdg-open or similar
+		// For now, just print the path
+		common->Printf( "Warnings saved to: %s\n", osPath.c_str() );
+#endif
 #endif
 	}
 }
