@@ -1,0 +1,4 @@
+# Generated subtitle tool output — NEVER commit transcriptions or audio.
+extracted/
+__pycache__/
+*.whisper.json

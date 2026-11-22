@@ -1,0 +1,20 @@
+{
+  "_comment": "Best-effort speaker names for mars_city2 voice lines — review in-game and edit. Keys are shader names (sndshd decls) or raw sound paths used as s_shader in the .map (lowercased).",
+  "marscity2_comp_vidconnect_req": "Sgt. Kelly",
+  "marscity2_comp_vidconnect_est": "Sgt. Kelly",
+  "mars_city1_annc_11": "UAC Computer",
+  "marscity2_sarge_briefing": "Sgt. Kelly",
+  "mc2_sarge_radio1": "Sgt. Kelly",
+  "mc2_sarge_radio2": "Sgt. Kelly",
+  "mc2_sarge_radio3": "Sgt. Kelly",
+  "mc2_sarge_radio4": "Sgt. Kelly",
+  "mc2_wilson_radio1": "Wilson",
+  "marscity2_ceiling_trigger": "Marine",
+  "marscity2_ceiling_primary": "Marine",
+  "marscity2_ceiling_secondary1": "Marine",
+  "marscity2_ceiling_secondary2": "Marine",
+  "sound/vo/mars_city2/01_ceilingguy_trigger.wav": "Marine",
+  "sound/vo/mars_city2/06_alt_ending.wav": "Marine",
+  "sound/vo/mars_city2/greg_discussion.wav": "Greg",
+  "sound/vo/mars_city2/sarge_mission_brief.wav": "Sgt. Kelly"
+}
