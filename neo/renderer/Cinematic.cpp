@@ -34,6 +34,11 @@ extern idCVar s_noSound;
 
 #include "tr_local.h"
 
+// Linux port debug: log cinematic decode/upload activity (1 line/sec) so videoMap
+// screens can be diagnosed from the console log without screenshots.
+static idCVar r_debugCinematic( "r_debugCinematic", "0", CVAR_BOOL | CVAR_RENDERER,
+	"log idCinematic ImageForTime/UploadCurrentFrame activity once per second" );
+
 //===========================================
 // Linux: engine-side Bink (.bik) decoder via libavformat/libavcodec/libswscale.
 // The GPL tree stubbed idCinematic (no decoder), so every videoMap / intro .bik
@@ -579,6 +584,18 @@ void idCinematicLocal::UploadCurrentFrame() {
 	const int ch = ( cinHeight + 1 ) / 2;
 	imgCr->SubImageUpload( 0, 0, 0, 0, cw, ch, yuvData[2], yuvLinesize[2] );	// V = Cr
 	imgCb->SubImageUpload( 0, 0, 0, 0, cw, ch, yuvData[1], yuvLinesize[1] );	// U = Cb
+
+	if ( r_debugCinematic.GetBool() ) {
+		uint32_t ck = 2166136261u;
+		int nb = cinWidth < 64 ? cinWidth : 64;
+		for ( int i = 0; i < nb; i++ ) {
+			ck = ( ck ^ yuvData[0][i] ) * 16777619u;
+		}
+		common->Printf( "CINDBG upload %s: frame=%d %dx%d texY=%u texCr=%u texCb=%u ycksum=%08x y0=%02x %02x %02x %02x\n",
+			fileName.c_str(), framePos, cinWidth, cinHeight,
+			(unsigned) imgY->IsLoaded(), (unsigned) imgCr->IsLoaded(), (unsigned) imgCb->IsLoaded(),
+			ck, yuvData[0][0], yuvData[0][1], yuvData[0][2], yuvData[0][3] );
+	}
 	hasFrame = true;
 }
 
@@ -694,6 +711,17 @@ cinData_t idCinematicLocal::ImageForTime( int milliseconds ) {
 			}
 		}
 		av_packet_unref( pkt );
+	}
+
+	if ( r_debugCinematic.GetBool() ) {
+		static int lastDbg = 0;
+		int nowMs = Sys_Milliseconds();
+		if ( nowMs - lastDbg > 1000 ) {
+			lastDbg = nowMs;
+			common->Printf( "CINDBG %s: ms=%d desired=%d framePos=%d hasFrame=%d valid=%d status=%d %dx%d startTime=%d numFrames=%d\n",
+				fileName.c_str(), milliseconds, desiredFrame, framePos, (int) hasFrame, (int) valid,
+				(int) status, cinWidth, cinHeight, startTime, numFrames );
+		}
 	}
 
 	if ( !hasFrame ) {

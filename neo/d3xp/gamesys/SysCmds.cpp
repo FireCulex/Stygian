@@ -791,6 +791,145 @@ void Cmd_SetPos_f( const idCmdArgs &args ) {
 
 /*
 =================
+Cmd_GuiClick_f
+
+Linux port debug aid (B10): simulate a left mouse click on the currently
+focused world GUI by driving the exact same path as idPlayer::Weapon_GUI —
+HandleEvent(mouse down/up) on ActiveGui(), then HandleGuiCommands on the
+focus entity. Prints the command string the GUI produced.
+usage: gui_click
+=================
+*/
+void Cmd_GuiClick_f( const idCmdArgs &args ) {
+	idPlayer *player = gameLocal.GetLocalPlayer();
+	if ( !player || !gameLocal.CheatsOk() ) {
+		return;
+	}
+
+	idUserInterface *ui = player->GetFocusUI();	// == ActiveGui() when no objective screen is open
+	if ( ui == NULL ) {
+		gameLocal.Printf( "gui_click: no active GUI (focusGUIent=%s)\n",
+			player->GetFocusGUIent() ? player->GetFocusGUIent()->GetName() : "(null)" );
+		return;
+	}
+
+	idEntity *focus = player->GetFocusGUIent();
+	if ( focus == NULL ) {
+		focus = player;
+	}
+
+	const char *command;
+	bool updateVisuals = false;
+
+	sysEvent_t ev = sys->GenerateMouseButtonEvent( 1, true );
+	command = ui->HandleEvent( &ev, gameLocal.time, &updateVisuals );
+	gameLocal.Printf( "gui_click down: ui=%s command='%s'\n", ui->Name(), command ? command : "(null)" );
+	if ( updateVisuals && player->GetFocusGUIent() && ui == player->GetFocusUI() ) {
+		player->GetFocusGUIent()->UpdateVisuals();
+	}
+	player->HandleGuiCommands( focus, command );
+
+	ev = sys->GenerateMouseButtonEvent( 1, false );
+	command = ui->HandleEvent( &ev, gameLocal.time, &updateVisuals );
+	gameLocal.Printf( "gui_click up:   command='%s'\n", command ? command : "(null)" );
+	player->HandleGuiCommands( focus, command );
+}
+
+/*
+=================
+Cmd_FocusDbg_f
+
+Linux port debug aid (B10): replicate idPlayer::UpdateFocus's gui-focus loop
+and print every gate (clip list, render entity, gui[0], IsInteractive,
+GuiTrace point) for each clip model along the 80-unit crosshair segment.
+usage: focusdbg
+=================
+*/
+void Cmd_FocusDbg_f( const idCmdArgs &args ) {
+	idPlayer *player = gameLocal.GetLocalPlayer();
+	if ( !player || !gameLocal.CheatsOk() ) {
+		return;
+	}
+
+	gameLocal.Printf( "focusdbg: focusGUIent=%s focusUI=%s spectating=%d inCinematic=%d\n",
+		player->GetFocusGUIent() ? player->GetFocusGUIent()->GetName() : "(null)",
+		player->GetFocusUI() ? player->GetFocusUI()->Name() : "(null)",
+		(int) player->spectating, (int) gameLocal.inCinematic );
+
+	idVec3 start = player->GetEyePosition();
+	idVec3 fwdAxis = player->firstPersonViewAxis[0];
+	idVec3 end = start + fwdAxis * 80.0f;
+	idVec3 endVA = start + player->viewAngles.ToForward() * 80.0f;
+	gameLocal.Printf( "focusdbg: eye %.2f %.2f %.2f fpvAxis=%s end %.2f %.2f %.2f (viewAngles end %.2f %.2f %.2f)\n",
+		start.x, start.y, start.z, fwdAxis.ToString(), end.x, end.y, end.z, endVA.x, endVA.y, endVA.z );
+
+	idBounds bounds( start );
+	bounds.AddPoint( end );
+
+	idClipModel *clipModelList[ MAX_GENTITIES ];
+	int listedClipModels = gameLocal.clip.ClipModelsTouchingBounds( bounds, -1, clipModelList, MAX_GENTITIES );
+	gameLocal.Printf( "focusdbg: listedClipModels=%d\n", listedClipModels );
+
+	for ( int i = 0; i < listedClipModels; i++ ) {
+		idClipModel *clip = clipModelList[ i ];
+		idEntity *ent = clip->GetEntity();
+		if ( ent == NULL ) {
+			continue;
+		}
+		renderEntity_t *re = ent->GetRenderEntity();
+		int handle = ent->GetModelDefHandle();
+		guiPoint_t pt;
+		pt.x = pt.y = -2.0f;
+		pt.guiId = -1;
+		if ( re != NULL && handle >= 0 ) {
+			pt = gameRenderWorld->GuiTrace( handle, start, end );
+		}
+		gameLocal.Printf( "focusdbg: [%d] %s class=%s hidden=%d re=%s handle=%d gui0=%s interactive=%d guitrace=(%.3f,%.3f) guiId=%d\n",
+			i, ent->GetName(), ent->GetClassname(), (int) ent->IsHidden(),
+			re ? "yes" : "no", handle,
+			( re && re->gui[ 0 ] ) ? re->gui[ 0 ]->Name() : "(null)",
+			( re && re->gui[ 0 ] ) ? (int) re->gui[ 0 ]->IsInteractive() : 0,
+			pt.x, pt.y, pt.guiId );
+		if ( re && re->gui[ 0 ] && handle >= 0 ) {
+			gameRenderWorld->GuiTraceDbg( handle, start, end );
+		}
+	}
+}
+
+/*
+=================
+Cmd_EntInfo_f
+
+Linux port debug aid (B10): print name/class/origin/spawnArgs of an entity.
+usage: entinfo <name>
+=================
+*/
+void Cmd_EntInfo_f( const idCmdArgs &args ) {
+	if ( args.Argc() < 2 ) {
+		gameLocal.Printf( "usage: entinfo <name>\n" );
+		return;
+	}
+	idEntity *ent = gameLocal.FindEntity( args.Argv( 1 ) );
+	if ( !ent ) {
+		gameLocal.Printf( "entinfo: entity '%s' not found\n", args.Argv( 1 ) );
+		return;
+	}
+	const idVec3 &o = ent->GetPhysics()->GetOrigin();
+	gameLocal.Printf( "entinfo: %s class=%s origin=%.2f %.2f %.2f\n", ent->GetName(), ent->GetClassname(), o.x, o.y, o.z );
+	const idKeyValue *kv = ent->spawnArgs.MatchPrefix( "floor", NULL );
+	while ( kv ) {
+		gameLocal.Printf( "  %s = %s\n", kv->GetKey().c_str(), kv->GetValue().c_str() );
+		kv = ent->spawnArgs.MatchPrefix( "floor", kv );
+	}
+	kv = ent->spawnArgs.MatchPrefix( "gui", NULL );
+	while ( kv ) {
+		gameLocal.Printf( "  %s = %s\n", kv->GetKey().c_str(), kv->GetValue().c_str() );
+		kv = ent->spawnArgs.MatchPrefix( "gui", kv );
+	}
+}
+
+/*
+=================
 Cmd_Trigger_f
 =================
 */
@@ -2355,6 +2494,9 @@ void idGameLocal::InitConsoleCommands() {
 	cmdSystem->AddCommand( "setviewpos",			Cmd_SetViewpos_f,			CMD_FL_GAME|CMD_FL_CHEAT,	"sets the current view position" );
 	cmdSystem->AddCommand( "teleport",				Cmd_Teleport_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"teleports the player to an entity location", idGameLocal::ArgCompletion_EntityName );
 	cmdSystem->AddCommand( "setpos",				Cmd_SetPos_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"teleport player to x y z [yaw pitch roll] (Linux debug)" );
+	cmdSystem->AddCommand( "gui_click",				Cmd_GuiClick_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"simulate a left click on the focused world GUI (Linux debug, B10)" );
+	cmdSystem->AddCommand( "entinfo",				Cmd_EntInfo_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"print entity info by name (Linux debug)" );
+	cmdSystem->AddCommand( "focusdbg",				Cmd_FocusDbg_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"debug the gui focus gates along the crosshair (Linux debug, B10)" );
 	cmdSystem->AddCommand( "trigger",				Cmd_Trigger_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"triggers an entity", idGameLocal::ArgCompletion_EntityName );
 	cmdSystem->AddCommand( "spawn",					Cmd_Spawn_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"spawns a game entity", idCmdSystem::ArgCompletion_Decl<DECL_ENTITYDEF> );
 	cmdSystem->AddCommand( "damage",				Cmd_Damage_f,				CMD_FL_GAME|CMD_FL_CHEAT,	"apply damage to an entity", idGameLocal::ArgCompletion_EntityName );

@@ -380,6 +380,9 @@ public:
 	// start / end are in global world coordinates.
 	virtual guiPoint_t		GuiTrace( qhandle_t entityHandle, const idVec3 start, const idVec3 end ) const = 0;
 
+	// Linux port debug (B10): like GuiTrace but prints every internal gate/surface.
+	virtual void			GuiTraceDbg( qhandle_t entityHandle, const idVec3 start, const idVec3 end ) const {}
+
 	// Traces vs the render model, possibly instantiating a dynamic version, and returns true if something was hit
 	virtual bool			ModelTrace( modelTrace_t &trace, qhandle_t entityHandle, const idVec3 &start, const idVec3 &end, const float radius ) const = 0;
 

@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "Game_local.h"
+#include "SubtitleManager.h"
 #include "../framework/Common_local.h"
 #include "PredictedValue_impl.h"
 
@@ -2352,8 +2353,11 @@ void idPlayer::Restore( idRestoreGame *savefile ) {
 		pdaMenu->Initialize( "pda", common->SW() );
 	}
 
+	const idDeclPDA *pda = GetPDA();
 	for ( i = 0; i < inventory.emails.Num(); i++ ) {
-		GetPDA()->AddEmail( inventory.emails[i] );
+		if ( pda != NULL ) {
+			pda->AddEmail( inventory.emails[i] );	// Linux port (B13): NULL guard
+		}
 	}
 
 
@@ -3211,6 +3215,9 @@ void idPlayer::DrawHUD( idMenuHandler_HUD * _hudManager ) {
 	if ( _hudManager ) {
 		_hudManager->Update();
 	}
+
+	// draw active subtitle overlay on top of the HUD
+	subtitleManager.Draw();
 
 	weapon.GetEntity()->UpdateGUI();
 
@@ -4210,7 +4217,13 @@ idPlayer::GiveSecurity
 ===============
 */
 void idPlayer::GiveSecurity( const char *security ) {
-	GetPDA()->SetSecurity( security );
+	// Linux port (B13): GetPDA() returns NULL when the PDA list is empty (event
+	// fired before the PDA was granted, or after a broken save/restore) and the
+	// stock code dereferenced it -> SIGSEGV.  Guard it.
+	const idDeclPDA *pda = GetPDA();
+	if ( pda != NULL ) {
+		pda->SetSecurity( security );
+	}
 
 	if ( hud ) {
 		hud->UpdatedSecurity();
@@ -4228,7 +4241,10 @@ void idPlayer::GiveEmail( const idDeclEmail * email ) {
 	}
 
 	inventory.emails.AddUnique( email );
-	GetPDA()->AddEmail( email );
+	const idDeclPDA *pda = GetPDA();
+	if ( pda != NULL ) {
+		pda->AddEmail( email );		// Linux port (B13): NULL guard, see GiveSecurity
+	}
 
 	// TODO_SPARTY: hook up new email notification in new hud
 	//if ( hud ) {

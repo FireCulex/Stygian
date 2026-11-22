@@ -106,6 +106,18 @@ void idTarget_EndLevel::Event_Trigger( idEntity *activator ) {
 	if ( noGui ) {
 		readyToExit = true;
 	}
+
+	// Linux port (B10): the GPL release never calls Draw()/PlayerCommand()/
+	// ExitCommand() (the gameLocal.endLevel consumer was stripped from the
+	// source), so a target_endlevel trigger only stopped the sounds and the
+	// level never changed.  Hand the next map to the session directly, the
+	// same way idTarget_SessionCommand does (BuildReturnValue ->
+	// ProcessGameReturn -> MoveToNewMap).  Note the entityDef default for
+	// nextMap is bogus ("guis/EndLevel.gui"); real map entities override it.
+	idStr nextMap;
+	if ( spawnArgs.GetString( "nextMap", "", nextMap ) && nextMap.Length() && nextMap.Find( ".gui" ) < 0 ) {
+		gameLocal.sessionCommand = va( "map %s", nextMap.c_str() );
+	}
 }
 
 /*

@@ -27,7 +27,10 @@ In addition, the Doom 3 BFG Edition Source Code is also subject to certain addit
 #include "sdl_local.h"
 #include "../../idlib/precompiled.h"
 #include "../../framework/Common.h"
+#include "../../framework/CVarSystem.h"
 #include <SDL.h>
+
+static idCVar sys_debugMainLoop( "sys_debugMainLoop", "0", CVAR_BOOL, "log every main-loop iteration to stdout (Linux port)" );
 
 /*
 ==================
@@ -61,19 +64,25 @@ int main( int argc, char **argv ) {
 	fflush(stdout);
 	// Main game loop
 	while ( 1 ) {
-		printf("main: calling sysLocalSDL.ProcessEvents\n");
-		fflush(stdout);
+		const bool trace = sys_debugMainLoop.GetBool();
+		if ( trace ) {
+			printf("main: calling sysLocalSDL.ProcessEvents\n");
+			fflush(stdout);
+		}
 		// Process SDL events (handled by sys layer)
 		sysLocalSDL.ProcessEvents();
-		printf("main: sysLocalSDL.ProcessEvents returned\n");
-		fflush(stdout);
-
-		printf("main: calling common->Frame\n");
-		fflush(stdout);
+		if ( trace ) {
+			printf("main: sysLocalSDL.ProcessEvents returned\n");
+			fflush(stdout);
+			printf("main: calling common->Frame\n");
+			fflush(stdout);
+		}
 		// Run game frame
 		common->Frame();
-		printf("main: common->Frame returned\n");
-		fflush(stdout);
+		if ( trace ) {
+			printf("main: common->Frame returned\n");
+			fflush(stdout);
+		}
 	}
 
 	// Never gets here

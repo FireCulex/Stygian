@@ -31,6 +31,7 @@ If you have questions concerning this license or the applicable additional terms
 
 #include "../tr_local.h"
 #include "../../framework/Common_local.h"
+#include "../../sys/sdl/mcp_server.h"
 
 idCVar r_drawFlickerBox( "r_drawFlickerBox", "0", CVAR_RENDERER | CVAR_BOOL, "visual test for dropping frames" );
 idCVar stereoRender_warp( "stereoRender_warp", "0", CVAR_RENDERER | CVAR_ARCHIVE | CVAR_BOOL, "use the optical warping renderprog instead of stereoDeGhost" );
@@ -128,6 +129,11 @@ const void GL_BlockingSwapBuffers() {
 	if ( r_showSwapBuffers.GetBool() && beforeSwap - beforeFinish > 1 ) {
 		common->Printf( "%i msec to glFinish\n", beforeSwap - beforeFinish );
 	}
+
+	// Linux port MCP debug: if a screen_pixels probe is armed, read the rect
+	// from GL_BACK now — after the swap the back buffer is undefined (black on
+	// llvmpipe/Xvfb), so this is the only reliable readback point.
+	mcp::RenderThreadPixelProbe();
 
 	GLimp_SwapBuffers();
 

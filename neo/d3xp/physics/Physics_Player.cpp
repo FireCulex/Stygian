@@ -933,9 +933,36 @@ void idPhysics_Player::CorrectAllSolid( trace_t &trace, int contents ) {
 		gameLocal.Printf( "%i:allsolid\n", c_pmove );
 	}
 
-	// FIXME: jitter around to find a free spot ?
-
 	if ( trace.fraction >= 1.0f ) {
+		// Linux port: stock just fakes a ground contact here (FIXME below), which
+		// zeroes the gravity velocity every frame and leaves the player frozen in
+		// mid-air ("floating, gravity not working") when the clip box ends up
+		// inside solid geometry (e.g. a rotating clip model moved into the player,
+		// or tunneling during a lag spike).  Jitter around to find a free spot;
+		// if one is found, move there and report free fall so gravity resumes.
+		static const float steps[] = { 1.0f, 2.0f, 4.0f, 8.0f, 16.0f, 32.0f, 64.0f, 128.0f };
+		for ( int s = 0; s < (int)( sizeof( steps ) / sizeof( steps[0] ) ); s++ ) {
+			for ( int d = 0; d < 6; d++ ) {
+				idVec3 dir;
+				switch ( d ) {
+				case 0: dir.Set( 0, 0, 1 ); break;		// up
+				case 1: dir.Set( 0, 0, -1 ); break;	// down
+				case 2: dir.Set( 1, 0, 0 ); break;
+				case 3: dir.Set( -1, 0, 0 ); break;
+				case 4: dir.Set( 0, 1, 0 ); break;
+				default: dir.Set( 0, -1, 0 ); break;
+				}
+				idVec3 newOrigin = current.origin + dir * steps[s];
+				if ( !( gameLocal.clip.Contents( newOrigin, clipModel, clipModel->GetAxis(), -1, self ) & MASK_SOLID ) ) {
+					current.origin = newOrigin;
+					clipModel->SetPosition( current.origin, clipModel->GetAxis() );
+					trace.fraction = 1.0f;		// free fall: CheckGround will clear groundPlane
+					return;
+				}
+			}
+		}
+
+		// FIXME: jitter around to find a free spot ?
 		memset( &trace, 0, sizeof( trace ) );
 		trace.endpos = current.origin;
 		trace.endAxis = clipModelAxis;

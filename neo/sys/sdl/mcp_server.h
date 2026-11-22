@@ -38,6 +38,12 @@ void LogLine( const char *line );
 // render_stats tool. Called from R_AddDrawViewCmd on the render thread.
 void SnapshotView( const viewDef_t *viewDef );
 
+// Called from GL_BlockingSwapBuffers() right before the swap: if a
+// screen_pixels probe is armed by the tool, glReadPixels(GL_BACK) the rect
+// (the just-rendered frame, still valid pre-swap on llvmpipe/Xvfb) and store
+// the stats. Main thread only.
+void RenderThreadPixelProbe();
+
 // Explicit control (also automatic via cvars inside PumpFrame).
 bool Start( int port );
 void Shutdown();

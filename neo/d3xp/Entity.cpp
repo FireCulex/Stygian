@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "Game_local.h"
+#include "SubtitleManager.h"
 
 /*
 ===============================================================================
@@ -1684,6 +1685,12 @@ bool idEntity::StartSoundShader( const idSoundShader *shader, const s_channelTyp
 	len = refSound.referenceSound->StartSound( shader, channel, diversity, soundShaderFlags, !timeGroup /*_D3XP*/ );
 	if ( length ) {
 		*length = len;
+	}
+
+	// subtitle hook: only show subtitles when the sound actually starts (len > 0)
+	// prevents subtitles for rejected sounds (already playing, playOnce, no channels, etc.)
+	if ( len > 0 ) {
+		subtitleManager.OnSoundStart( this, shader->GetName(), len, channel );
 	}
 
 	// set reference to the sound for shader synced effects
@@ -5476,9 +5483,7 @@ void idAnimatedEntity::UpdateAnimation() {
 		// every frustum plane and defeat culling entirely (massive overdraw, e.g.
 		// the mars_city2 vent spot) plus spam "inside out bounds". Fall back to
 		// the model's static bounds so the entity stays cullable.
-		if ( !fl.hidden ) {
-			gameLocal.DPrintf( "%d: inside out bounds\n", gameLocal.time );
-		}
+		// (Linux port: no per-frame DPrintf here — it spammed the console)
 		if ( animator.ModelHandle() != NULL ) {
 			renderEntity.bounds = animator.ModelHandle()->Bounds();
 		}

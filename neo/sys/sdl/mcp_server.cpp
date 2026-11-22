@@ -9,7 +9,7 @@ Minimal Streamable-HTTP MCP endpoint served from inside the game process:
 	GET  /health   liveness probe ("ok")
 	GET  /         server info
 
-Tools: console_log, player_state, render_stats.
+Tools: console_log, console_command, subtitle_log, player_state, render_stats, pointed_entity, screen_pixels.
 
 Threading:
 	- the TCP/HTTP server runs on its own std::thread and never touches
@@ -33,10 +33,16 @@ Threading:
 #include "../../framework/Common.h"
 #include "../../framework/Common_local.h"
 #include "../../framework/CVarSystem.h"
+#include "../../framework/CmdSystem.h"
 #include "../../d3xp/Game_local.h"
 #include "../../d3xp/Player.h"
+#include "../../d3xp/Entity.h"
+#include "../../d3xp/SubtitleManager.h"
 #include "../../d3xp/physics/Physics.h"
+#include "../../d3xp/physics/Clip.h"
+#include "../../ui/UserInterface.h"
 #include "../../renderer/tr_local.h"
+#include "../../renderer/RenderWorld.h"
 
 #include <SDL.h>
 
@@ -124,6 +130,40 @@ struct ViewSnapshot {
 
 std::mutex		g_viewMu;
 ViewSnapshot	g_view;
+
+//=============================================================================
+// pixel probe for the screen_pixels tool: request/result handshake.
+// ToolScreenPixels runs on the main thread at the START of the frame
+// (PumpFrame), but GL_BACK only reliably holds the finished frame right
+// before the swap (on Xvfb/llvmpipe the post-swap back buffer reads black),
+// so the tool arms a rect here and mcp::RenderThreadPixelProbe() — called
+// from GL_BlockingSwapBuffers pre-swap — does the actual glReadPixels.
+// Protocol: call once to arm, call again (next frame) to get the capture.
+//=============================================================================
+
+struct PixelProbeRequest {
+	bool		pending = false;
+	int			x = 0, y = 0, w = 0, h = 0;	// screen px, top-left origin
+	int			reqFrame = 0;
+};
+
+struct PixelProbeResult {
+	bool		valid = false;
+	int			frame = 0;
+	int			x = 0, y = 0, w = 0, h = 0;
+	double		mean[4] = { 0, 0, 0, 0 };
+	double		stddev[4] = { 0, 0, 0, 0 };
+	uint32_t	checksum = 0;
+	double		grid[4][4][3];					// 4x4 cells of mean RGB
+	double		meanAbsDiffX = 0;				// mean |px[x+1]-px[x]| over RGB — high = static noise
+	double		meanAbsDiffY = 0;				// mean |px[y+1]-px[y]| over RGB — high = static noise
+	unsigned	glError = 0;
+};
+
+std::mutex			g_probeMu;
+PixelProbeRequest	g_probeReq;
+PixelProbeResult	g_probeRes;
+int					g_probeResReturned = -1;	// frame already handed to a caller
 
 //=============================================================================
 // deferred tool-call queue: server thread -> main thread
@@ -264,6 +304,368 @@ Value ToolPlayerState() {
 	return MakeToolResult( o.serialize( true ) );
 }
 
+// Executes an arbitrary console command (e.g. "setpos x y z", "noclip 1",
+// "map game/mars_city2") on the main thread through the normal command buffer.
+Value ToolConsoleCommand( const Value & args ) {
+	const Value * cv = ( args.type == mcpjson::T_OBJ ) ? args.get( "command" ) : NULL;
+	if ( cv == NULL || cv->type != mcpjson::T_STR || cv->str.empty() ) {
+		return MakeToolResult( "missing required string argument 'command'", true );
+	}
+	std::string cmd = cv->str;
+	if ( cmd.size() > 2048 ) {
+		cmd.resize( 2048 );
+	}
+	// append to the command buffer: executed by idCommonLocal::Frame's
+	// ExecuteCommandBuffer(), i.e. at the same point console input runs
+	cmdSystem->BufferCommandText( CMD_EXEC_APPEND, cmd.c_str() );
+	return MakeToolResult( "queued: " + cmd );
+}
+
+// Returns the subtitle manager's ring of recent sound-start events as
+// JSON: every sound that started (shader name, length, whether it had
+// a subtitle entry and was displayed). Immune to console-log flooding.
+Value ToolSubtitleLog( const Value & args ) {
+	int lines = 100;
+	bool all = false;
+	if ( args.type == mcpjson::T_OBJ ) {
+		const Value * lv = args.get( "lines" );
+		if ( lv != NULL && lv->type == mcpjson::T_NUM ) {
+			lines = (int) lv->num;
+			if ( lines < 1 ) {
+				lines = 1;
+			}
+			if ( lines > idSubtitleManager::kMaxEvents ) {
+				lines = idSubtitleManager::kMaxEvents;
+			}
+		}
+		const Value * av = args.get( "all" );
+		if ( av != NULL && av->type == mcpjson::T_BOOL ) {
+			all = av->b;
+		}
+	}
+
+	const idList< idSubtitleEvent, TAG_SUBTITLE > & events = subtitleManager.GetEvents();
+	int n = events.Num();
+
+	Value arr = Value::array();
+	int shown = 0;
+	// walk from the newest backwards, collecting up to 'lines' events
+	for ( int i = n - 1; i >= 0 && shown < lines; i-- ) {
+		const idSubtitleEvent & ev = events[i];
+		if ( !all && ev.speaker.IsEmpty() ) {
+			continue;	// default: only sounds that have a subtitle entry
+		}
+		Value e = Value::object();
+		e.set( "time", Value::number( (double) ev.time ) );
+		e.set( "shader", Value::string( ev.shader.c_str() ) );
+		e.set( "speaker", Value::string( ev.speaker.c_str() ) );
+		e.set( "cues", Value::number( (double) ev.numCues ) );
+		e.set( "lenMs", Value::number( (double) ev.lengthMs ) );
+		e.set( "displayed", Value::boolean( ev.displayed ) );
+		arr.push( e );
+		shown++;
+	}
+
+	Value o = Value::object();
+	o.set( "total", Value::number( (double) n ) );
+	o.set( "events", arr );
+	return MakeToolResult( o.serialize( true ) );
+}
+
+//=============================================================================
+// pointed_entity tool: what the crosshair is on + what the frob highlight has
+//=============================================================================
+
+static void JsonSetVec3( Value & o, const char * key, const idVec3 & v ) {
+	Value a = Value::array();
+	a.push( Value::number( v.x ) );
+	a.push( Value::number( v.y ) );
+	a.push( Value::number( v.z ) );
+	o.set( key, a );
+}
+
+static Value JsonEntityInfo( idEntity * ent ) {
+	Value e = Value::object();
+	if ( ent == NULL ) {
+		return e;
+	}
+	e.set( "classname", Value::string( ent->spawnArgs.GetString( "classname", "" ) ) );
+	e.set( "name", Value::string( ent->GetName() ) );
+	e.set( "entityNumber", Value::number( (double) ent->entityNumber ) );
+	idPhysics * phys = ent->GetPhysics();
+	if ( phys != NULL ) {
+		JsonSetVec3( e, "origin", phys->GetOrigin() );
+	} else {
+		idVec3 o;
+		ent->spawnArgs.GetVector( "origin", "0 0 0", o );
+		JsonSetVec3( e, "origin", o );
+	}
+	const renderEntity_t * re = ent->GetRenderEntity();
+	if ( re != NULL ) {
+		if ( re->hModel != NULL ) {
+			e.set( "model", Value::string( re->hModel->Name() ) );
+		}
+		Value guis = Value::array();
+		for ( int i = 0; i < 3; i++ ) {
+			if ( re->gui[i] != NULL ) {
+				guis.push( Value::string( re->gui[i]->Name() ) );
+			}
+		}
+		e.set( "guis", guis );
+	}
+	e.set( "spawnModel", Value::string( ent->spawnArgs.GetString( "model", "" ) ) );
+	e.set( "spawnGui", Value::string( ent->spawnArgs.GetString( "gui", "" ) ) );
+	e.set( "spawnGui2", Value::string( ent->spawnArgs.GetString( "gui2", "" ) ) );
+	e.set( "target", Value::string( ent->spawnArgs.GetString( "target", "" ) ) );
+	e.set( "targetname", Value::string( ent->spawnArgs.GetString( "targetname", "" ) ) );
+	Value args = Value::object();
+	int n = ent->spawnArgs.GetNumKeyVals();
+	for ( int i = 0; i < n && i < 128; i++ ) {
+		const idKeyValue * kv = ent->spawnArgs.GetKeyVal( i );
+		if ( kv != NULL ) {
+			args.set( kv->GetKey().c_str(), Value::string( kv->GetValue().c_str() ) );
+		}
+	}
+	e.set( "spawnArgs", args );
+	return e;
+}
+
+Value ToolPointedEntity() {
+	Value o = Value::object();
+	bool inGame = ( session != NULL && session->GetState() == idSession::INGAME );
+	o.set( "sessionState", Value::string( session != NULL ? SessionStateName( (int) session->GetState() ) : "UNKNOWN" ) );
+	o.set( "inGame", Value::boolean( inGame ) );
+	o.set( "map", Value::string( gameLocal.GetMapName() ) );
+
+	idPlayer * player = inGame ? gameLocal.GetLocalPlayer() : NULL;
+	if ( player == NULL ) {
+		return MakeToolResult( o.serialize( true ) );
+	}
+
+	idVec3 start = player->GetEyePosition();
+	idVec3 dir = player->viewAngles.ToForward();
+	idVec3 end = start + dir * 4096.0f;
+	JsonSetVec3( o, "eye", start );
+	JsonSetVec3( o, "forward", dir );
+
+	trace_t tr;
+	gameLocal.clip.TracePoint( tr, start, end, MASK_SHOT_RENDERMODEL, player );
+	o.set( "traceFraction", Value::number( tr.fraction ) );
+	JsonSetVec3( o, "tracePoint", tr.c.point );
+	o.set( "traceEntityNum", Value::number( (double) tr.c.entityNum ) );
+
+	if ( tr.c.entityNum >= 0 && tr.c.entityNum < MAX_GENTITIES && tr.c.entityNum != ENTITYNUM_WORLD ) {
+		idEntity * ent = gameLocal.entities[ tr.c.entityNum ];
+		if ( ent != NULL ) {
+			o.set( "traceEntity", JsonEntityInfo( ent ) );
+			if ( gameRenderWorld != NULL && ent->GetRenderEntity() != NULL ) {
+				guiPoint_t gp = gameRenderWorld->GuiTrace( ent->GetModelDefHandle(), start, end );
+				if ( gp.x != -1.0f ) {
+					Value g = Value::object();
+					g.set( "u", Value::number( gp.x ) );
+					g.set( "v", Value::number( gp.y ) );
+					g.set( "guiId", Value::number( gp.guiId ) );
+					o.set( "guiTrace", g );
+				}
+			}
+		}
+	} else if ( tr.c.entityNum == ENTITYNUM_WORLD ) {
+		o.set( "traceEntityClass", Value::string( "worldspawn (brush geometry)" ) );
+	}
+
+	// the frob-highlighted entity (what the game focus logic currently has)
+	if ( player->GetFocusGUIent() != NULL ) {
+		Value f = JsonEntityInfo( player->GetFocusGUIent() );
+		if ( player->GetFocusUI() != NULL ) {
+			f.set( "focusGui", Value::string( player->GetFocusUI()->Name() ) );
+		}
+		o.set( "focusGUIent", f );
+	}
+	o.set( "focusCharacter", Value::boolean( player->HasFocusCharacter() ) );
+	o.set( "focusVehicle", Value::boolean( player->HasFocusVehicle() ) );
+
+	return MakeToolResult( o.serialize( true ) );
+}
+
+//=============================================================================
+// screen_pixels tool: read back a rect of the last RENDERED frame so static
+// noise vs. real video can be told apart numerically (stddev) without
+// screenshots. Args: x, y, w, h in screen pixels, top-left origin.
+//
+// The readback cannot happen here (this tool runs at the start of the frame,
+// and on Xvfb/llvmpipe the post-swap back buffer reads black), so this arms a
+// probe rect; mcp::RenderThreadPixelProbe() — called from
+// GL_BlockingSwapBuffers right before the swap — does glReadPixels(GL_BACK)
+// while the frame is still valid. Protocol: call once to arm, call again next
+// frame to get the captured stats (each call also re-arms for the next frame).
+//=============================================================================
+
+static void ComputeProbeStats( const uint8_t * buf, int w, int h, PixelProbeResult & r ) {
+	double sum[4] = { 0, 0, 0, 0 };
+	double sumsq[4] = { 0, 0, 0, 0 };
+	const size_t n = (size_t) w * (size_t) h;
+	uint32_t cksum = 2166136261u;
+	double gridCnt[4][4];
+	double diffX = 0, diffY = 0;
+	size_t diffXN = 0, diffYN = 0;
+	memset( r.grid, 0, sizeof( r.grid ) );
+	memset( gridCnt, 0, sizeof( gridCnt ) );
+
+	for ( size_t i = 0; i < n; i++ ) {
+		const uint8_t * px = &buf[i * 4];
+		for ( int c = 0; c < 4; c++ ) {
+			sum[c] += px[c];
+			sumsq[c] += (double) px[c] * px[c];
+			cksum = ( cksum ^ px[c] ) * 16777619u;
+		}
+		int gx = (int) ( ( i % (size_t) w ) * 4 / (size_t) w );
+		int gy = (int) ( ( i / (size_t) w ) * 4 / (size_t) h );
+		for ( int c = 0; c < 3; c++ ) {
+			r.grid[gy][gx][c] += px[c];
+		}
+		gridCnt[gy][gx] += 1.0;
+		// neighbor differences (spatial structure: static noise is uncorrelated)
+		if ( ( i % (size_t) w ) + 1 < (size_t) w ) {
+			const uint8_t * nx = &buf[( i + 1 ) * 4];
+			for ( int c = 0; c < 3; c++ ) {
+				diffX += fabs( (double) nx[c] - px[c] );
+			}
+			diffXN++;
+		}
+		if ( i + (size_t) w < n ) {
+			const uint8_t * ny = &buf[( i + (size_t) w ) * 4];
+			for ( int c = 0; c < 3; c++ ) {
+				diffY += fabs( (double) ny[c] - px[c] );
+			}
+			diffYN++;
+		}
+	}
+	r.meanAbsDiffX = diffXN > 0 ? diffX / (double) diffXN : 0.0;
+	r.meanAbsDiffY = diffYN > 0 ? diffY / (double) diffYN : 0.0;
+
+	for ( int c = 0; c < 4; c++ ) {
+		double m = sum[c] / (double) n;
+		double var = sumsq[c] / (double) n - m * m;
+		if ( var < 0 ) { var = 0; }
+		r.mean[c] = m;
+		r.stddev[c] = sqrt( var );
+	}
+	r.checksum = cksum;
+	for ( int gy = 0; gy < 4; gy++ ) {
+		for ( int gx = 0; gx < 4; gx++ ) {
+			double cnt = gridCnt[gy][gx] > 0 ? gridCnt[gy][gx] : 1.0;
+			for ( int c = 0; c < 3; c++ ) {
+				r.grid[gy][gx][c] /= cnt;
+			}
+		}
+	}
+}
+
+static Value ProbeResultToJson( const PixelProbeResult & r, int currentFrame ) {
+	Value o = Value::object();
+	o.set( "frame", Value::number( (double) currentFrame ) );
+	o.set( "capturedFrame", Value::number( (double) r.frame ) );
+	Value res = Value::object();
+	res.set( "width", Value::number( glConfig.nativeScreenWidth ) );
+	res.set( "height", Value::number( glConfig.nativeScreenHeight ) );
+	o.set( "resolution", res );
+	Value rect = Value::object();
+	rect.set( "x", Value::number( r.x ) );
+	rect.set( "y", Value::number( r.y ) );
+	rect.set( "w", Value::number( r.w ) );
+	rect.set( "h", Value::number( r.h ) );
+	o.set( "rect", rect );
+	if ( !r.valid ) {
+		o.set( "ok", Value::boolean( false ) );
+		char eb[64];
+		snprintf( eb, sizeof( eb ), "glReadPixels error 0x%x", r.glError );
+		o.set( "error", Value::string( eb ) );
+		return MakeToolResult( o.serialize( true ) );
+	}
+	Value mean = Value::array();
+	Value stddev = Value::array();
+	for ( int c = 0; c < 4; c++ ) {
+		mean.push( Value::number( r.mean[c] ) );
+		stddev.push( Value::number( r.stddev[c] ) );
+	}
+	o.set( "meanRGBA", mean );
+	o.set( "stddevRGBA", stddev );
+	o.set( "checksum", Value::number( (double) r.checksum ) );
+	o.set( "meanAbsDiffX", Value::number( r.meanAbsDiffX ) );
+	o.set( "meanAbsDiffY", Value::number( r.meanAbsDiffY ) );
+	Value g = Value::array();
+	for ( int gy = 0; gy < 4; gy++ ) {
+		Value row = Value::array();
+		for ( int gx = 0; gx < 4; gx++ ) {
+			Value cell = Value::array();
+			for ( int c = 0; c < 3; c++ ) {
+				cell.push( Value::number( r.grid[gy][gx][c] ) );
+			}
+			row.push( cell );
+		}
+		g.push( row );
+	}
+	o.set( "grid4x4meanRGB", g );
+	o.set( "ok", Value::boolean( true ) );
+	return MakeToolResult( o.serialize( true ) );
+}
+
+Value ToolScreenPixels( const Value & args ) {
+	int x = 0, y = 0, w = 0, h = 0;
+	if ( args.type == mcpjson::T_OBJ ) {
+		const Value * v;
+		if ( ( v = args.get( "x" ) ) != NULL && v->type == mcpjson::T_NUM ) { x = (int) v->num; }
+		if ( ( v = args.get( "y" ) ) != NULL && v->type == mcpjson::T_NUM ) { y = (int) v->num; }
+		if ( ( v = args.get( "w" ) ) != NULL && v->type == mcpjson::T_NUM ) { w = (int) v->num; }
+		if ( ( v = args.get( "h" ) ) != NULL && v->type == mcpjson::T_NUM ) { h = (int) v->num; }
+	}
+
+	Value o = Value::object();
+	o.set( "frame", Value::number( (double) idLib::frameNumber ) );
+	Value res = Value::object();
+	res.set( "width", Value::number( glConfig.nativeScreenWidth ) );
+	res.set( "height", Value::number( glConfig.nativeScreenHeight ) );
+	o.set( "resolution", res );
+
+	const int W = glConfig.nativeScreenWidth;
+	const int H = glConfig.nativeScreenHeight;
+	if ( x < 0 ) { x = 0; }
+	if ( y < 0 ) { y = 0; }
+	if ( w > W - x ) { w = W - x; }
+	if ( h > H - y ) { h = H - y; }
+
+	if ( w <= 0 || h <= 0 || W <= 0 || H <= 0 ) {
+		o.set( "ok", Value::boolean( false ) );
+		o.set( "error", Value::string( "need integer args x,y,w,h (top-left origin, screen pixels) inside the window" ) );
+		return MakeToolResult( o.serialize( true ) );
+	}
+
+	Value rect = Value::object();
+	rect.set( "x", Value::number( x ) );
+	rect.set( "y", Value::number( y ) );
+	rect.set( "w", Value::number( w ) );
+	rect.set( "h", Value::number( h ) );
+	o.set( "rect", rect );
+
+	// handshake: hand back the previous capture (if not yet returned), and
+	// (re-)arm the probe so RenderThreadPixelProbe captures this frame's rect
+	// at the swap
+	std::lock_guard<std::mutex> lk( g_probeMu );
+	g_probeReq.pending = true;
+	g_probeReq.x = x; g_probeReq.y = y; g_probeReq.w = w; g_probeReq.h = h;
+	g_probeReq.reqFrame = idLib::frameNumber;
+
+	if ( g_probeRes.valid && g_probeRes.frame != g_probeResReturned ) {
+		g_probeResReturned = g_probeRes.frame;
+		return ProbeResultToJson( g_probeRes, idLib::frameNumber );
+	}
+
+	o.set( "ok", Value::boolean( false ) );
+	o.set( "pending", Value::boolean( true ) );
+	o.set( "note", Value::string( "probe armed; captured at the next swap — call screen_pixels again with the same rect to get the pixels" ) );
+	return MakeToolResult( o.serialize( true ) );
+}
+
 Value ToolRenderStats( const Value & args ) {
 	bool wantEntities = false;
 	const Value * ev = ( args.type == mcpjson::T_OBJ ) ? args.get( "entities" ) : NULL;
@@ -354,8 +756,16 @@ void ExecuteTool( PendingRequest & req ) {
 
 	if ( name == "console_log" ) {
 		req.result = ToolConsoleLog( args );
+	} else if ( name == "console_command" ) {
+		req.result = ToolConsoleCommand( args );
+	} else if ( name == "subtitle_log" ) {
+		req.result = ToolSubtitleLog( args );
 	} else if ( name == "player_state" ) {
 		req.result = ToolPlayerState();
+	} else if ( name == "pointed_entity" ) {
+		req.result = ToolPointedEntity();
+	} else if ( name == "screen_pixels" ) {
+		req.result = ToolScreenPixels( args );
 	} else if ( name == "render_stats" ) {
 		req.result = ToolRenderStats( args );
 	} else {
@@ -393,12 +803,101 @@ Value ToolsList() {
 
 	{
 		Value t = Value::object();
+		t.set( "name", Value::string( "console_command" ) );
+		t.set( "description", Value::string(
+			"Execute an arbitrary console command on the main thread via the normal command buffer "
+			"(e.g. \"setpos -640 -1848 300\", \"noclip 1\", \"set ui_subtitles 0\", \"map game/mars_city2\"). "
+			"Execution happens at the next command-buffer point in the frame; observe effects via console_log." ) );
+		Value schema = Value::object();
+		schema.set( "type", Value::string( "object" ) );
+		Value props = Value::object();
+		Value command = Value::object();
+		command.set( "type", Value::string( "string" ) );
+		command.set( "description", Value::string( "console command line to execute (max 2048 chars)" ) );
+		props.set( "command", command );
+		schema.set( "properties", props );
+		Value reqd = Value::array();
+		reqd.push( Value::string( "command" ) );
+		schema.set( "required", reqd );
+		t.set( "inputSchema", schema );
+		tools.push( t );
+	}
+
+	{
+		Value t = Value::object();
+		t.set( "name", Value::string( "subtitle_log" ) );
+		t.set( "description", Value::string(
+			"Recent sound-start events from the subtitle manager (shader name, length ms, subtitle "
+			"speaker/cue count, whether a subtitle was displayed), newest last. This is the reliable way "
+			"to see which dialogue actually fired; the console log is not used." ) );
+		Value schema = Value::object();
+		schema.set( "type", Value::string( "object" ) );
+		Value props = Value::object();
+		Value lines = Value::object();
+		lines.set( "type", Value::string( "integer" ) );
+		lines.set( "description", Value::string( "number of trailing events to return (default 100, max 512)" ) );
+		lines.set( "default", Value::number( 100 ) );
+		lines.set( "maximum", Value::number( 512 ) );
+		props.set( "lines", lines );
+		schema.set( "properties", props );
+		t.set( "inputSchema", schema );
+		tools.push( t );
+	}
+
+	{
+		Value t = Value::object();
 		t.set( "name", Value::string( "player_state" ) );
 		t.set( "description", Value::string(
 			"Current session state, map, and (when in game) player position, view angles and health." ) );
 		Value schema = Value::object();
 		schema.set( "type", Value::string( "object" ) );
 		schema.set( "properties", Value::object() );
+		t.set( "inputSchema", schema );
+		tools.push( t );
+	}
+
+	{
+		Value t = Value::object();
+		t.set( "name", Value::string( "pointed_entity" ) );
+		t.set( "description", Value::string(
+			"What the player crosshair is aimed at and what the frob highlight currently has: a clip trace from "
+			"the eye along viewAngles (fraction, hit point, entity number), full info on the hit entity "
+			"(classname, name, origin, model, guis, target, all spawn args), a GuiTrace against its render model, "
+			"and the current focusGUIent/focusUI (the highlighted interactive panel)." ) );
+		Value schema = Value::object();
+		schema.set( "type", Value::string( "object" ) );
+		schema.set( "properties", Value::object() );
+		t.set( "inputSchema", schema );
+		tools.push( t );
+	}
+
+	{
+		Value t = Value::object();
+		t.set( "name", Value::string( "screen_pixels" ) );
+		t.set( "description", Value::string(
+			"Read back a rectangle of the last rendered frame (glReadPixels on GL_BACK, captured pre-swap by the "
+			"renderer) and return per-channel mean/stddev, an FNV checksum and a 4x4 grid of mean RGB — enough to "
+			"tell static noise (high stddev, checksum changes every frame) from a working videoMap screen without "
+			"screenshots. x,y,w,h are screen pixels, top-left origin. Two-call protocol: the first call arms the "
+			"probe, the second call (next frame) returns the captured stats and re-arms." ) );
+		Value schema = Value::object();
+		schema.set( "type", Value::string( "object" ) );
+		Value props = Value::object();
+		const char * names[4] = { "x", "y", "w", "h" };
+		const char * descs[4] = { "left edge, px", "top edge, px", "width, px", "height, px" };
+		for ( int i = 0; i < 4; i++ ) {
+			Value p = Value::object();
+			p.set( "type", Value::string( "integer" ) );
+			p.set( "description", Value::string( descs[i] ) );
+			props.set( names[i], p );
+		}
+		schema.set( "properties", props );
+		Value reqd = Value::array();
+		reqd.push( Value::string( "x" ) );
+		reqd.push( Value::string( "y" ) );
+		reqd.push( Value::string( "w" ) );
+		reqd.push( Value::string( "h" ) );
+		schema.set( "required", reqd );
 		t.set( "inputSchema", schema );
 		tools.push( t );
 	}
@@ -640,7 +1139,11 @@ void HandleConnection( int fd ) {
 		info.set( "endpoint", Value::string( "/mcp" ) );
 		Value tools = Value::array();
 		tools.push( Value::string( "console_log" ) );
+		tools.push( Value::string( "console_command" ) );
+		tools.push( Value::string( "subtitle_log" ) );
 		tools.push( Value::string( "player_state" ) );
+		tools.push( Value::string( "pointed_entity" ) );
+		tools.push( Value::string( "screen_pixels" ) );
 		tools.push( Value::string( "render_stats" ) );
 		info.set( "tools", tools );
 		SendResponse( fd, 200, "OK", "application/json", info.serialize( true ) );
@@ -737,6 +1240,42 @@ void McpLogOutput( void * userdata, int category, SDL_LogPriority priority, cons
 //=============================================================================
 // public API
 //=============================================================================
+
+// Called from GL_BlockingSwapBuffers() right before GLimp_SwapBuffers().
+void mcp::RenderThreadPixelProbe() {
+	PixelProbeRequest req;
+	{
+		std::lock_guard<std::mutex> lk( g_probeMu );
+		if ( !g_probeReq.pending ) {
+			return;
+		}
+		req = g_probeReq;
+		g_probeReq.pending = false;		// capture exactly one frame per arm
+	}
+
+	const int W = glConfig.nativeScreenWidth;
+	const int H = glConfig.nativeScreenHeight;
+	if ( W <= 0 || H <= 0 || req.w <= 0 || req.h <= 0 ) {
+		return;
+	}
+
+	std::vector<uint8_t> buf( (size_t) req.w * (size_t) req.h * 4 );
+	glReadBuffer( GL_BACK );	// the just-rendered frame, still valid pre-swap
+	glReadPixels( req.x, H - ( req.y + req.h ), req.w, req.h, GL_RGBA, GL_UNSIGNED_BYTE, buf.data() );
+	const GLenum glErr = glGetError();
+
+	PixelProbeResult r;
+	r.frame = idLib::frameNumber;
+	r.x = req.x; r.y = req.y; r.w = req.w; r.h = req.h;
+	r.glError = (unsigned) glErr;
+	if ( glErr == GL_NO_ERROR ) {
+		ComputeProbeStats( buf.data(), req.w, req.h, r );
+		r.valid = true;
+	}
+
+	std::lock_guard<std::mutex> lk( g_probeMu );
+	g_probeRes = r;
+}
 
 void mcp::LogLine( const char * text ) {
 	if ( text == NULL || text[0] == '\0' ) {

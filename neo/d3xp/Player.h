@@ -578,6 +578,12 @@ public:
 	virtual bool			HandleSingleGuiCommand( idEntity *entityGui, idLexer *src );
 	bool					GuiActive() { return focusGUIent != NULL; }
 
+	// Linux port MCP debug accessors (pointed_entity tool)
+	idEntity *				GetFocusGUIent() const { return focusGUIent; }
+	idUserInterface *		GetFocusUI() const { return focusUI; }
+	bool					HasFocusCharacter() const { return focusCharacter != NULL; }
+	bool					HasFocusVehicle() const { return focusVehicle != NULL; }
+
 	bool					HandleGuiEvents( const sysEvent_t * ev );
 	void					PerformImpulse( int impulse );
 	void					Spectate( bool spectate, bool force = false );

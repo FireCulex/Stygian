@@ -1142,6 +1142,78 @@ guiPoint_t idRenderWorldLocal::GuiTrace( qhandle_t entityHandle, const idVec3 st
 
 /*
 ===================
+idRenderWorldLocal::GuiTraceDbg
+
+Linux port debug (B10): like GuiTrace but prints every internal gate.
+===================
+*/
+void idRenderWorldLocal::GuiTraceDbg( qhandle_t entityHandle, const idVec3 start, const idVec3 end ) const {
+	common->Printf( "GuiTraceDbg: handle=%d start=%s end=%s\n", entityHandle, start.ToString(), end.ToString() );
+
+	if ( ( entityHandle < 0 ) || ( entityHandle >= entityDefs.Num() ) ) {
+		common->Printf( "GuiTraceDbg: invalid handle %i (num=%d)\n", entityHandle, entityDefs.Num() );
+		return;
+	}
+
+	idRenderEntityLocal * def = entityDefs[entityHandle];
+	if ( def == NULL ) {
+		common->Printf( "GuiTraceDbg: handle %i is NULL\n", entityHandle );
+		return;
+	}
+
+	idRenderModel * model = def->parms.hModel;
+	common->Printf( "GuiTraceDbg: def=%p hModel=%s dynamic=%d callback=%p axis=%s origin=%s\n",
+		def, model ? model->Name() : "(null)", model ? (int)model->IsDynamicModel() : -1,
+		(void*)def->parms.callback, def->parms.axis.ToString(), def->parms.origin.ToString() );
+	if ( model == NULL || model->IsDynamicModel() != DM_STATIC || def->parms.callback != NULL ) {
+		common->Printf( "GuiTraceDbg: early out (model/callback gate)\n" );
+		return;
+	}
+
+	const idBounds &mb = model->Bounds();
+	common->Printf( "GuiTraceDbg: model bounds(local)=[%s .. %s] numSurfaces=%d\n", mb[0].ToString(), mb[1].ToString(), model->NumSurfaces() );
+
+	idVec3 localStart, localEnd;
+	R_GlobalPointToLocal( def->modelMatrix, start, localStart );
+	R_GlobalPointToLocal( def->modelMatrix, end, localEnd );
+	common->Printf( "GuiTraceDbg: localStart=%s localEnd=%s\n", localStart.ToString(), localEnd.ToString() );
+
+	for ( int i = 0; i < model->NumSurfaces(); i++ ) {
+		const modelSurface_t *surf = model->Surface( i );
+
+		const srfTriangles_t * tri = surf->geometry;
+		const idMaterial * shader = R_RemapShaderBySkin( surf->shader, def->parms.customSkin, def->parms.customShader );
+		localTrace_t local;
+		local.fraction = 2.0f;
+		local.point = vec3_origin;
+		if ( tri != NULL ) {
+			local = R_LocalTrace( localStart, localEnd, 0.0f, tri );
+		}
+		common->Printf( "GuiTraceDbg: surf[%d] shader='%s' remap='%s' hasGui=%d entityGui=%d gui=%s tri=%s frac=%.4f point=%s bounds=[%s .. %s]\n",
+			i, surf->shader ? surf->shader->GetName() : "(null)", shader ? shader->GetName() : "(null)",
+			shader ? (int)shader->HasGui() : 0, shader ? shader->GetEntityGui() : 0,
+			( shader && shader->GlobalGui() ) ? shader->GlobalGui()->Name() : "(null)",
+			tri ? "yes" : "no", local.fraction, local.point.ToString(),
+			tri ? tri->bounds[0].ToString() : "-", tri ? tri->bounds[1].ToString() : "-" );
+		if ( shader && shader->HasGui() && tri != NULL ) {
+			common->Printf( "GuiTraceDbg:   gui-surf numVerts=%d numIndexes=%d\n", tri->numVerts, tri->numIndexes );
+			for ( int v = 0; v < tri->numVerts && v < 6; v++ ) {
+				common->Printf( "GuiTraceDbg:   vert[%d] = %s\n", v, tri->verts[v].xyz.ToString() );
+			}
+			for ( int k = 0; k < tri->numIndexes && k < 6; k++ ) {
+				common->Printf( "GuiTraceDbg:   index[%d] = %d\n", k, tri->indexes[k] );
+			}
+			if ( tri->numIndexes >= 3 ) {
+				const idPlane tp( tri->verts[tri->indexes[0]].xyz, tri->verts[tri->indexes[1]].xyz, tri->verts[tri->indexes[2]].xyz );
+				common->Printf( "GuiTraceDbg:   tri0 plane normal=%s d=%.4f distStart=%.4f distEnd=%.4f\n",
+					tp.Normal().ToString(), tp[3], tp.Distance( localStart ), tp.Distance( localEnd ) );
+			}
+		}
+	}
+}
+
+/*
+===================
 idRenderWorldLocal::ModelTrace
 ===================
 */

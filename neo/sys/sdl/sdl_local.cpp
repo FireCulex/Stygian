@@ -91,6 +91,15 @@ bool idSysLocalSDL::CreateWindow(const char* title, int width, int height, bool 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+	// B8b fix: the framebuffer NEEDS an alpha channel. Materials like gui/static
+	// use "blend GL_DST_ALPHA, GL_ONE_MINUS_DST_ALPHA" (a 50/50 noise overlay on
+	// monitor screens); without alpha bits in the back buffer GL_DST_ALPHA reads
+	// back as 1.0 and the overlay replaces the content at 100% -> pure static.
+	// SDL defaults alpha size to 0, so request it explicitly (WGL always had it).
+	SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);

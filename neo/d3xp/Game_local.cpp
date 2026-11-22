@@ -30,6 +30,7 @@ If you have questions concerning this license or the applicable additional terms
 #pragma hdrstop
 
 #include "Game_local.h"
+#include "SubtitleManager.h"
 
 #ifdef GAME_DLL
 
@@ -221,6 +222,7 @@ void idGameLocal::Clear() {
 	clip.Shutdown();
 	pvs.Shutdown();
 	sessionCommand.Clear();
+	endLevel = NULL;					// Linux port (B10): reset end-level state on map load (stock GPL never initializes this member)
 	locationEntities = NULL;
 	smokeParticles = NULL;
 	editEntities = NULL;
@@ -384,6 +386,8 @@ void idGameLocal::Shutdown() {
 	mpGame.Shutdown();
 
 	MapShutdown();
+
+	subtitleManager.Shutdown();
 
 	aasList.DeleteContents( true );
 	aasNames.Clear();
@@ -950,6 +954,7 @@ void idGameLocal::LoadMap( const char * mapName, int randseed ) {
 	time			= 0;
 	framenum		= 0;
 	sessionCommand = "";
+	endLevel		= NULL;			// Linux port (B10): clear end-level state on every map load
 	nextGibTime		= 0;
 
 	portalSkyEnt			= NULL;

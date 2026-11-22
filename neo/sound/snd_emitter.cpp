@@ -30,14 +30,48 @@ If you have questions concerning this license or the applicable additional terms
 #include "../idlib/precompiled.h"
 
 #include "snd_local.h"
+#include "../d3xp/SubtitleManager.h"
 
 idCVar s_singleEmitter( "s_singleEmitter", "0", CVAR_INTEGER, "mute all sounds but this emitter" );
 idCVar s_showStartSound( "s_showStartSound", "0", CVAR_BOOL, "print a message every time a sound starts/stops" );
+idCVar s_showStartSoundFilter( "s_showStartSoundFilter", "", CVAR_ARCHIVE, "filter s_showStartSound by shader name substring (case-insensitive)" );
+idCVar s_showStartSoundChannels( "s_showStartSoundChannels", "0", CVAR_ARCHIVE | CVAR_INTEGER, "filter s_showStartSound by channel bitmask (1=VOICE, 2=VOICE2, 4=RADIO, 8=BODY, 16=WEAPON, etc.)" );
+idCVar s_showStartSoundDialogue( "s_showStartSoundDialogue", "1", CVAR_BOOL, "with s_showStartSound: only log dialogue (subtitle-file keys and sound/vo/ paths); 0 logs everything" );
 idCVar s_useOcclusion( "s_useOcclusion", "1", CVAR_BOOL, "Attenuate sounds based on walls" );
 idCVar s_centerFractionVO( "s_centerFractionVO", "0.75", CVAR_FLOAT, "Portion of VO sounds routed to the center channel" );
 
 extern idCVar s_playDefaultSound;
 extern idCVar s_noSound;
+
+/*
+ ========================
+ SoundDebugIsDialogue
+
+ Whitelist for s_showStartSound: a sound counts as dialogue when it has a
+ subtitle-file entry (the authoritative list of spoken lines) or lives
+ under sound/vo/. Everything else (monster chatter, impacts, ambients,
+ heartbeat, ...) is spam and never logged.
+ ========================
+ */
+static bool SoundDebugIsDialogue( const char *name ) {
+	if ( name == NULL || name[0] == '\0' ) {
+		return false;
+	}
+	if ( idStr::FindText( name, "/vo/", false ) >= 0 ) {
+		return true;
+	}
+	return subtitleManager.IsSubtitleSound( name );
+}
+
+static bool SoundDebugShowsShader( const char *name ) {
+	if ( !s_showStartSound.GetBool() ) {
+		return false;
+	}
+	if ( s_showStartSoundDialogue.GetBool() && !SoundDebugIsDialogue( name ) ) {
+		return false;
+	}
+	return true;
+}
 
 /*
 ================================================================================================
@@ -660,7 +694,20 @@ int idSoundEmitterLocal::StartSound( const idSoundShader * shader, const s_chann
 
 	bool showStartSound = s_showStartSound.GetBool();
 	if ( showStartSound ) {
-		idLib::Printf( "%dms: StartSound(%d:%d): %s: ", currentTime, index, channel, shader->GetName() );
+		const char *filter = s_showStartSoundFilter.GetString();
+		if ( filter[0] != '\0' && idStr::FindText( shader->GetName(), filter, false ) < 0 ) {
+			showStartSound = false;
+		}
+		// dialogue whitelist: only subtitle-keyed sounds and sound/vo/ paths
+		if ( showStartSound && !SoundDebugShowsShader( shader->GetName() ) ) {
+			showStartSound = false;
+		}
+		int channelMask = s_showStartSoundChannels.GetInteger();
+		if ( showStartSound && channelMask != 0 && channel >= 0 && channel < 32 ) {
+			if ( ( channelMask & ( 1 << channel ) ) == 0 ) {
+				showStartSound = false;
+			}
+		}
 	}
 
 	// build the channel parameters by taking the shader parms and optionally overriding
@@ -714,6 +761,10 @@ int idSoundEmitterLocal::StartSound( const idSoundShader * shader, const s_chann
 				break;
 			}
 		}
+	}
+
+	if ( showStartSound ) {
+		idLib::Printf( "%dms: StartSound(%d:%d): %s: ", currentTime, index, channel, shader->GetName() );
 	}
 
 	idSoundSample * leadinSample = NULL;
@@ -850,7 +901,7 @@ void idSoundEmitterLocal::StopSound( const s_channelType channel ) {
 		if ( channel != SCHANNEL_ANY && chan->logicalChannel != channel ) {
 			continue;
 		}
-		if ( s_showStartSound.GetBool() ) {
+		if ( SoundDebugShowsShader( chan->soundShader->GetName() ) ) {
 			idLib::Printf( "%dms: StopSound(%d:%d): %s\n", soundWorld->GetSoundTime(), index, channel, chan->soundShader->GetName() );
 		}
 
@@ -886,8 +937,17 @@ void idSoundEmitterLocal::ModifySound( const s_channelType channel, const soundS
 		if ( channel != SCHANNEL_ANY && chan->logicalChannel != channel ) {
 			continue;
 		}
-		if ( s_showStartSound.GetBool() ) {
-			idLib::Printf( "%dms: ModifySound(%d:%d): %s\n", soundWorld->GetSoundTime(), index, channel, chan->soundShader->GetName() );
+		bool showModifySound = SoundDebugShowsShader( chan->soundShader->GetName() );
+		if ( showModifySound ) {
+			int channelMask = s_showStartSoundChannels.GetInteger();
+			if ( channelMask != 0 && chan->logicalChannel >= 0 && chan->logicalChannel < 32 ) {
+				if ( ( channelMask & ( 1 << chan->logicalChannel ) ) == 0 ) {
+					showModifySound = false;
+				}
+			}
+		}
+		if ( showModifySound ) {
+			idLib::Printf( "%dms: ModifySound(%d:%d): %s\n", soundWorld->GetSoundTime(), index, chan->logicalChannel, chan->soundShader->GetName() );
 		}
 		OverrideParms( &chan->parms, parms, &chan->parms );
 	}
@@ -919,7 +979,7 @@ void idSoundEmitterLocal::FadeSound( const s_channelType channel, float to, floa
 		if ( channel != SCHANNEL_ANY && chan->logicalChannel != channel ) {
 			continue;
 		}
-		if ( s_showStartSound.GetBool() ) {
+		if ( SoundDebugShowsShader( chan->soundShader->GetName() ) ) {
 			idLib::Printf( "%dms: FadeSound(%d:%d): %s to %.2fdb over %.2f seconds\n", soundWorld->GetSoundTime(), index, channel, chan->soundShader->GetName(), to, over );
 		}
 
