@@ -7,11 +7,17 @@ Part of the subtitle generator (tools/subtitle_gen/). Pure stdlib; reuses
 idwav2wav.idwav_to_wave for generated/*.idwav -> RIFF/WAVE conversion.
 
 Usage:
-    python3 extract_level.py --base "<game install>/base" --level mars_city2 \
+    python3 extract_level.py --base "<game install>/base" --map mars_city2 \
         --out extracted/mars_city2
+    python3 extract_level.py --base "<game install>/base" --level mars_city2 \
+        --out extracted/mars_city2        (legacy: --level is just the vo dir)
 
-A shader is included when any of its sound files lives under
-'sound/vo/<level>/' (the level's voice-over directory). Output:
+--map discovers the level's voice-over directories automatically (see
+discover_map_vo_dirs); --level keeps only 'sound/vo/<level>/'.
+
+A shader is included when any of its sound files lives under one of the
+level's 'sound/vo/<dir>/' directories, or when the level's .map references a
+raw wav path directly as "s_shader". Output:
 
     <out>/<shader>.wav        playable RIFF/WAVE (ADPCM preserved; ffmpeg and
                               whisper.cpp both decode MS ADPCM WAVs)
@@ -32,6 +38,16 @@ import d3pack
 from idwav2wav import idwav_to_wave
 
 S_SHADER_RE = re.compile(r'"s_shader"\s+"([^"]+)"')
+VO_PATH_RE = re.compile(r'sound/vo/([^/]+)/', re.I)
+
+# sound/vo/ subdirs that are NOT per-map level dialogue: PDA audio logs,
+# video-disk audio, generic AI chatter/taunts, MP ctf, end cinematic, and
+# the Lost Mission (le_*) dirs are separate later phases.
+GENERIC_VO_DIRS = {'_generic', 'audio_logs', 'combat_chatter', 'ctf', 'end',
+                   'exis', 'feedback', 'taunts', 'video',
+                   'erebus1', 'erebus2', 'erebus3', 'erebus4', 'erebus5', 'erebus6',
+                   'phobos1', 'phobos2', 'phobos3', 'phobos4',
+                   'enpro1', 'enpro2', 'hell_post', 'underground'}
 
 
 def sanitize(name):
@@ -39,10 +55,64 @@ def sanitize(name):
     return name.replace('/', '_').replace('\\', '_')
 
 
-def collect_shaders(base_dir, level):
-    """Scan every .resources pack for .sndshd decls referencing the level's
-    vo directory. Returns {shader: [sound_resource_path, ...]}."""
-    vo_prefix = 'sound/vo/%s/' % level
+def _norm(s):
+    return re.sub(r'[^a-z0-9]', '', s.lower())
+
+
+def all_vo_dirs(pack_tables):
+    vos = set()
+    for _pack, entries in pack_tables:
+        for name in entries:
+            m = VO_PATH_RE.search(name)  # pack entries are 'generated/sound/vo/...'
+            if m:
+                vos.add(m.group(1).lower())
+    return vos
+
+
+def discover_map_vo_dirs(pack_tables, map_name):
+    """All sound/vo/ subdirs a map draws dialogue from:
+      - the vo dir matching the map name exactly or underscore-insensitively
+        (mars_city1 -> marscity, alphalabs4 -> alpha_labs4, ...)
+      - vo paths used as raw "s_shader" values in maps/game/<map>.map
+      - decls in sound/<map>.sndshd / sound/map_<map>.sndshd
+    Generic/system/expansion dirs (GENERIC_VO_DIRS) are excluded.
+    """
+    nmp = _norm(map_name)
+    vos = set()
+    for v in all_vo_dirs(pack_tables):
+        if _norm(v) == nmp:
+            vos.add(v)
+    for pack, entries in pack_tables:
+        for name, (off, ln) in entries.items():
+            if not name.endswith('.sndshd') or not name.startswith('sound/'):
+                continue
+            stem = _norm(name[len('sound/'):-len('.sndshd')])
+            if stem.startswith('map'):
+                stem = stem[3:]
+            if stem == nmp:
+                text = d3pack.read_entry(pack, off, ln).decode('latin1')
+                for m in VO_PATH_RE.finditer(text):
+                    vos.add(m.group(1).lower())
+    map_key = 'maps/game/%s.map' % map_name
+    for pack, entries in pack_tables:
+        if map_key not in entries:
+            continue
+        off, ln = entries[map_key]
+        text = d3pack.read_entry(pack, off, ln).decode('latin1', errors='replace')
+        for m in S_SHADER_RE.finditer(text):
+            val = m.group(1).replace('\\', '/').lower()
+            m2 = VO_PATH_RE.match(val)
+            if m2:
+                vos.add(m2.group(1).lower())
+        break
+    return {v for v in vos if v not in GENERIC_VO_DIRS}
+
+
+def collect_shaders(base_dir, vo_dirs, map_name=None):
+    """Scan every .resources pack for .sndshd decls referencing any of the
+    vo dirs, plus raw "s_shader" wav paths in the map. Returns
+    (pack_tables, {shader: [sound_resource_path, ...]})."""
+    prefixes = ['sound/vo/%s/' % v for v in sorted(vo_dirs)]
     pack_tables = []
     shaders = {}
     for pack in d3pack.iter_resource_packs(base_dir):
@@ -57,7 +127,8 @@ def collect_shaders(base_dir, level):
                 continue
             text = d3pack.read_entry(pack, off, ln).decode('latin1')
             for shader, sounds in d3pack.parse_sndshd(text).items():
-                vo_sounds = [s for s in sounds if s.lower().startswith(vo_prefix)]
+                vo_sounds = [s for s in sounds
+                             if any(s.lower().startswith(p) for p in prefixes)]
                 if vo_sounds:
                     shaders.setdefault(shader, [])
                     for s in vo_sounds:
@@ -67,19 +138,21 @@ def collect_shaders(base_dir, level):
     # (e.g. "s_shader" "sound/VO/mars_city2/greg_discussion.wav") — the engine
     # passes that literal string to StartSoundShader, so the subtitle JSON
     # must be keyed by the same string. Scan the level .map for those.
-    map_key = 'maps/game/%s.map' % level
-    for pack, entries in pack_tables:
-        if map_key not in entries:
-            continue
-        off, ln = entries[map_key]
-        text = d3pack.read_entry(pack, off, ln).decode('latin1', errors='replace')
-        for m in S_SHADER_RE.finditer(text):
-            val = m.group(1).replace('\\', '/').lower()
-            if val.startswith('sound/') and '/%s/' % level in val:
-                shaders.setdefault(val, [])
-                if val not in shaders[val]:
-                    shaders[val].append(val)
-        break
+    if map_name:
+        map_key = 'maps/game/%s.map' % map_name
+        for pack, entries in pack_tables:
+            if map_key not in entries:
+                continue
+            off, ln = entries[map_key]
+            text = d3pack.read_entry(pack, off, ln).decode('latin1', errors='replace')
+            for m in S_SHADER_RE.finditer(text):
+                val = m.group(1).replace('\\', '/').lower()
+                m2 = VO_PATH_RE.match(val)
+                if m2 and m2.group(1).lower() not in GENERIC_VO_DIRS:
+                    shaders.setdefault(val, [])
+                    if val not in shaders[val]:
+                        shaders[val].append(val)
+            break
     return pack_tables, shaders
 
 
@@ -87,14 +160,38 @@ def main(argv):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--base', required=True, help='game install base/ dir')
-    ap.add_argument('--level', required=True, help='level vo dir, e.g. mars_city2')
+    ap.add_argument('--map', default=None, help='map name, e.g. mars_city2 (auto-discovers its vo dirs)')
+    ap.add_argument('--level', default=None, help='legacy: only sound/vo/<level>/')
     ap.add_argument('--out', required=True, help='output dir for wavs + manifest.json')
     args = ap.parse_args(argv)
 
+    if not args.map and not args.level:
+        ap.error('one of --map / --level is required')
+
     os.makedirs(args.out, exist_ok=True)
-    pack_tables, shaders = collect_shaders(args.base, args.level)
+    # probe packs once for discovery
+    probe = []
+    for pack in d3pack.iter_resource_packs(args.base):
+        try:
+            probe.append((pack, d3pack.read_table(pack)))
+        except (ValueError, OSError):
+            pass
+    vo_dirs = set()
+    map_name = args.map
+    if args.map:
+        vo_dirs |= discover_map_vo_dirs(probe, args.map)
+        print('map %s -> vo dirs: %s' % (args.map, sorted(vo_dirs) or 'NONE'))
+    if args.level:
+        vo_dirs.add(args.level)
+        if not map_name:
+            map_name = args.level
+    if not vo_dirs:
+        print('no vo dirs found for %s under %s' % (map_name, args.base))
+        return 1
+    pack_tables, shaders = collect_shaders(args.base, vo_dirs, map_name)
     if not shaders:
-        print('no shaders referencing sound/vo/%s/ found under %s' % (args.level, args.base))
+        print('no shaders referencing %s found under %s'
+              % (sorted(vo_dirs), args.base))
         return 1
 
     manifest = []

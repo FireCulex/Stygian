@@ -26,21 +26,33 @@ a missing file silently means no subtitles.
 
 ```sh
 cd tools/subtitle_gen
-python3 generate.py \
-    --install "/mnt/wd_mybook/SteamLibrary/steamapps/common/DOOM 3 BFG Edition" \
-    --level mars_city2 \
-    --server http://127.0.0.1:8081 \
-    --speakers speakers_marscity2.json
+python3 generate.py
 ```
 
-Steps performed:
+No arguments needed: the Steam install is auto-detected (Steam
+`libraryfolders.vdf` + `$DOOM3BFG_INSTALL` + common roots; override with
+`--install "/path/to/DOOM 3 BFG Edition"`), and the whisper.cpp server
+defaults to `http://127.0.0.1:8081` (`--server`). The generator then scans
+the **27 base-game maps one by one** (campaign order, see `BASE_GAME_MAPS`
+in `generate.py`; subset with `--maps mars_city2,admin`), transcribes each
+map's voice WAVs, and merges everything into
+`<install>/base/subtitles/subtitles.json`. Expansions (erebus/phobos/le_*),
+PDA audio logs, video-disk audio and generic chatter are excluded on
+purpose — later phases. Re-runs are incremental: whisper responses are
+cached in `extracted/_cache/` (shared across maps), so only new audio is
+transcribed.
 
-1. `extract_level.py` scans every `.resources` pack under `<install>/base/`,
-   parses all `.sndshd` sound-shader decls plus raw `"s_shader" "sound/..."`
-   values in `maps/game/<level>.map`, keeps everything under
-   `sound/vo/<level>/`, and re-wraps each `generated/*.idwav` as a playable
-   RIFF/WAVE (`idwav2wav.py`). Output: `extracted/<level>/*.wav` +
-   `manifest.json`.
+Steps performed per map:
+
+1. `extract_level.py --map <map>` scans every `.resources` pack under
+   `<install>/base/`, discovers the map's voice-over dirs (its own
+   `sound/vo/<dir>/` matched underscore-insensitively — e.g. `mars_city1` →
+   `marscity`, `alphalabs4` → `alpha_labs4` — plus vo paths used as raw
+   `"s_shader" "sound/..."` values in `maps/game/<map>.map`, plus
+   `sound/<map>.sndshd` / `sound/map_<map>.sndshd` decls), parses all
+   `.sndshd` sound-shader decls referencing those dirs, and re-wraps each
+   `generated/*.idwav` as a playable RIFF/WAVE (`idwav2wav.py`).
+   Output: `extracted/<map>/*.wav` + `manifest.json`.
 2. `transcribe.py` POSTs each WAV to `<server>/inference`
    (`response_format=verbose_json`, `token_timestamps=true`, `language=en`,
    `temperature=0.0`), converts the word timestamps (seconds -> int ms
@@ -73,8 +85,8 @@ Steps performed:
      `<shader>.json` per shader as a review artifact (the engine never
      reads those).
 
-   Raw server responses are cached as `extracted/<level>/<shader>.whisper.json`
-   and reused on re-runs (`--no-cache` forces re-transcription) — **always
+   Raw server responses are cached as `extracted/_cache/<shader>.whisper.json`
+   (shared across maps) and reused on re-runs (`--no-cache` forces re-transcription) — **always
    spot-check these before playing** (Whisper hallucinates on game audio;
    the default tiny.en model especially — use base.en or larger for final
    output). Transcripts that are pure `[ ... ]` non-speech noise are skipped.
@@ -97,6 +109,8 @@ Steps performed:
 - `d3pack.py` — light table-only pack reader + `.sndshd`/`.map` parsers.
 - `extract_level.py` — level WAV extraction (step 1 above).
 - `transcribe.py` — whisper.cpp transcription + JSON emission (step 2 above).
-- `generate.py` — runs both steps for one level.
+- `generate.py` — no-arg runner: auto-detects the install, loops all 27
+  base-game maps (extract + transcribe each, merging into the combined
+  `subtitles.json`).
 - `speakers_marscity2.json` — example shader -> speaker map (edit as needed;
   speaker is optional in the JSON).

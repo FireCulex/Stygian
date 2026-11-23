@@ -157,6 +157,9 @@ def main(argv):
     ap.add_argument('--language', default='en')
     ap.add_argument('--temperature', type=float, default=0.0)
     ap.add_argument('--only', default=None, help='comma-separated shader filter')
+    ap.add_argument('--cache-dir', default=None,
+                    help='shared .whisper.json cache dir (default: manifest dir); lets '
+                         'per-map runs share transcriptions of shaders used by several maps')
     ap.add_argument('--no-cache', action='store_true',
                     help='re-transcribe even if a cached .whisper.json exists')
     ap.add_argument('--per-shader', action='store_true',
@@ -173,6 +176,8 @@ def main(argv):
             speakers = json.load(fh)
     only = set(args.only.split(',')) if args.only else None
     os.makedirs(args.out, exist_ok=True)
+    cache_dir = args.cache_dir or base_dir
+    os.makedirs(cache_dir, exist_ok=True)
 
     ok = fail = skipped = 0
     combined_updates = {}
@@ -187,7 +192,7 @@ def main(argv):
         if not os.path.isfile(wav):
             print('SKIP (no wav): %s' % shader)
             continue
-        cache_path = os.path.join(base_dir, sanitize(shader) + '.whisper.json')
+        cache_path = os.path.join(cache_dir, sanitize(shader) + '.whisper.json')
         if not args.no_cache and os.path.isfile(cache_path):
             with open(cache_path) as fh:
                 verbose = json.load(fh)

@@ -80,6 +80,9 @@ def parse_sndshd(text):
             continue
         if s.endswith('{'):
             cur = s[:-1].strip()
+            if not cur:
+                cur = None
+                continue
             shaders.setdefault(cur, [])
         elif s == '}':
             cur = None
