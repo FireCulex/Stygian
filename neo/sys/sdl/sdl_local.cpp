@@ -1466,6 +1466,15 @@ const char *Sys_DefaultSavePath() {
 		} else {
 			strcpy( savePath, "./savegames" );
 		}
+		// mkdir(2) is not recursive: create each missing parent (e.g. ~/.doom3bfg)
+		// the same way idFileSystemLocal::CreateOSPath does.
+		for ( char *p = savePath + 1; *p; p++ ) {
+			if ( *p == '/' ) {
+				*p = '\0';
+				mkdir( savePath, 0755 );
+				*p = '/';
+			}
+		}
 		mkdir( savePath, 0755 );
 	}
 	return savePath;
@@ -1839,14 +1848,8 @@ const char *Sys_GetCallStackCurStr( int depth ) {
 	return "";
 }
 
-void Sys_SaveGameCheck( bool & exists, bool & autosaveExists ) {
-	exists = true;
-	autosaveExists = false;
-}
-
-void Sys_ExecuteSavegameCommandAsyncImpl( void *parms ) {
-	// Not implemented
-}
+// Sys_SaveGameCheck and Sys_ExecuteSavegameCommandAsyncImpl(idSaveLoadParms *)
+// are implemented in sdl_savegame.cpp.
 
 // idSaveGameThread defined in doomlib_stubs.cpp
 

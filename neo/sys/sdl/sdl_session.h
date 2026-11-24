@@ -32,11 +32,17 @@ In addition, the Doom 3 BFG Edition Source Code is also subject to certain addit
 #include "../sys_session.h"
 #include "../sys_lobby_backend.h"
 #include "../sys_session_local.h"
+#include "../sys_session_savegames.h"
 #include "../../sys/sys_savegame.h"
 
 class idSessionLocalSDL : public idSession {
 public:
-    virtual ~idSessionLocalSDL() {}
+    virtual ~idSessionLocalSDL() {
+        // Intentionally leak the savegame processors: this is a global object,
+        // so the dtor runs during static destruction, and their idSysSignal
+        // members would call SDL_DestroyMutex/SDL_DestroyCond after SDL_Quit
+        // (same reason g_stubMatchParms in sdl_session.cpp is never freed).
+    }
 
     // idSession pure virtual functions
     virtual void Initialize() override;
@@ -270,6 +276,22 @@ public:
     // Missing pure virtual from idSession
     virtual saveGameHandle_t GetEnumerationHandle() const;
     virtual const saveGameDetailsList_t & GetEnumeratedSavegames() const;
+
+    // Savegame completion callbacks.  This class inherits idSession (not
+    // idSessionLocal), so it needs its own processors and slot state.
+    void OnSaveCompleted( idSaveLoadParms * parms );
+    void OnEnumerationCompleted( idSaveLoadParms * parms );
+    void OnDeleteCompleted( idSaveLoadParms * parms );
+    bool LoadGameCheckDescriptionFile( idSaveLoadParms & parms );
+
+private:
+    idSaveGameProcessorSaveFiles *      processorSaveFiles      = new (TAG_SAVEGAMES) idSaveGameProcessorSaveFiles();
+    idSaveGameProcessorLoadFiles *      processorLoadFiles      = new (TAG_SAVEGAMES) idSaveGameProcessorLoadFiles();
+    idSaveGameProcessorDelete *         processorDelete         = new (TAG_SAVEGAMES) idSaveGameProcessorDelete();
+    idSaveGameProcessorEnumerateGames * processorEnumerate      = new (TAG_SAVEGAMES) idSaveGameProcessorEnumerateGames();
+    idStr                               currentSaveSlot;
+    saveGameHandle_t                    enumerationHandle = 0;
+    bool                                savesEnumerated = false;
 };
 
 #endif // __SDL_SESSION_H__

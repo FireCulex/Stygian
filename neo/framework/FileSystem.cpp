@@ -510,9 +510,14 @@ void idFileSystemLocal::CreateOSPath( const char *OSPath ) {
 	}
 
 	idStrStatic< MAX_OSPATH > path( OSPath );
-	path.SlashesToBackSlashes();
+	// Normalize to PATHSEPARATOR_CHAR.  SlashesToBackSlashes() hardcodes '\\',
+	// which on Linux leaves no PATHSEPARATOR_CHAR ('/') in the string, so the
+	// loop below would never call Sys_Mkdir and nested directories would never
+	// be created (fopen then fails with ENOENT).  On win32 this is identical:
+	// ReplaceSeparators() maps both separators to '\\'.
+	ReplaceSeparators( path );
 	for( ofs = &path[ 1 ]; *ofs ; ofs++ ) {
-		if ( *ofs == PATHSEPARATOR_CHAR ) {	
+		if ( *ofs == PATHSEPARATOR_CHAR ) {
 			// create the directory
 			*ofs = 0;
 			Sys_Mkdir( path );

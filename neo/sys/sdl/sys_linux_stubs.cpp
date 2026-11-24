@@ -44,10 +44,8 @@ void Sys_ReLaunch( void * data, unsigned int flags ) {
 	common->Quit();
 }
 
-// Save game async stub
-void Sys_ExecuteSavegameCommandAsyncImpl( idSaveLoadParms * parms ) {
-	// Synchronous execution for now
-}
+// Sys_ExecuteSavegameCommandAsyncImpl and Sys_SaveGameCheck are implemented in
+// sdl_savegame.cpp (synchronous port of the win32 savegame thread).
 
 // Minimal idNetSessionPort implementation
 idNetSessionPort::idNetSessionPort() {}
