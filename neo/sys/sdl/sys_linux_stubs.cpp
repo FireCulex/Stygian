@@ -71,9 +71,94 @@ const char * Sys_Lang( int index ) {
 	return "english";
 }
 
-// Time/date stubs
-const char * Sys_TimeStampToStr( long long timestamp ) { return ""; }
-const char * Sys_SecToStr( int seconds ) { return ""; }
+// Time/date formatting (ported from sys/sys_local.cpp, which is not in the Linux build)
+/*
+=================
+Sys_TimeStampToStr
+=================
+*/
+const char * Sys_TimeStampToStr( ID_TIME_T timeStamp ) {
+	static char timeString[MAX_STRING_CHARS];
+	timeString[0] = '\0';
+
+	time_t ts = (time_t)timeStamp;
+	tm*	time = localtime( &ts );
+	if ( time == NULL ) {
+		return "??/??/???? ??:??";
+	}
+
+	idStr out;
+
+	idStr lang = cvarSystem->GetCVarString( "sys_lang" );
+	if ( lang.Icmp( ID_LANG_ENGLISH ) == 0 ) {
+		// english gets "month/day/year  hour:min" + "am" or "pm"
+		out = va_format( "%02d", time->tm_mon + 1 );
+		out += "/";
+		out += va_format( "%02d", time->tm_mday );
+		out += "/";
+		out += va_format( "%d", time->tm_year + 1900 );
+		out += " ";	// changed to spaces since flash doesn't recognize \t
+		if ( time->tm_hour > 12 ) {
+			out += va_format( "%02d", time->tm_hour - 12 );
+		} else if ( time->tm_hour == 0 ) {
+				out += "12";
+		} else {
+			out += va_format( "%02d", time->tm_hour );
+		}
+		out += ":";
+		out += va_format( "%02d", time->tm_min );
+		if ( time->tm_hour >= 12 ) {
+			out += "pm";
+		} else {
+			out += "am";
+		}
+	} else {
+		// europeans get "day/month/year  24hour:min"
+		out = va_format( "%02d", time->tm_mday );
+		out += "/";
+		out += va_format( "%02d", time->tm_mon + 1 );
+		out += "/";
+		out += va_format( "%d", time->tm_year + 1900 );
+		out += " ";	// changed to spaces since flash doesn't recognize \t
+		out += va_format( "%02d", time->tm_hour );
+		out += ":";
+		out += va_format( "%02d", time->tm_min );
+	}
+	idStr::Copynz( timeString, out, sizeof( timeString ) );
+
+	return timeString;
+}
+
+/*
+========================
+Sys_SecToStr
+========================
+*/
+const char * Sys_SecToStr( int sec ) {
+	static char timeString[MAX_STRING_CHARS];
+
+	int weeks = sec / ( 3600 * 24 * 7 );
+	sec -= weeks * ( 3600 * 24 * 7 );
+
+	int days = sec / ( 3600 * 24 );
+	sec -= days * ( 3600 * 24 );
+
+	int hours = sec / 3600;
+	sec -= hours * 3600;
+
+	int min = sec / 60;
+	sec -= min * 60;
+
+	if ( weeks > 0 ) {
+		sprintf( timeString, "%dw, %dd, %d:%02d:%02d", weeks, days, hours, min, sec );
+	} else if ( days > 0 ) {
+		sprintf( timeString, "%dd, %d:%02d:%02d", days, hours, min, sec );
+	} else {
+		sprintf( timeString, "%d:%02d:%02d", hours, min, sec );
+	}
+
+	return timeString;
+}
 
 // leaderboardStats_t struct for LeaderboardLocal_Upload
 struct leaderboardStats_t {};
