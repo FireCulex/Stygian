@@ -68,9 +68,17 @@ def read_entry(path, off, length):
 
 
 def parse_sndshd(text):
-    """Parse .sndshd text -> {shader_name: [sound_resource_path, ...]}."""
+    """Parse .sndshd text -> {shader_name: [sound_resource_path, ...]}.
+
+    Handles both block styles found in the packs:
+        name {              name
+            sound/x.wav     {
+        }                     sound/x.wav
+                              }
+    """
     shaders = {}
     cur = None
+    pending = None
     for raw in text.splitlines():
         i = raw.find('//')
         if i >= 0:
@@ -78,16 +86,27 @@ def parse_sndshd(text):
         s = raw.strip()
         if not s:
             continue
+        if s == '{':
+            # brace on its own line: the previous bare line was the shader name
+            cur = pending
+            pending = None
+            if cur:
+                shaders.setdefault(cur, [])
+            continue
+        if s == '}':
+            cur = None
+            pending = None
+            continue
         if s.endswith('{'):
             cur = s[:-1].strip()
-            if not cur:
-                cur = None
-                continue
-            shaders.setdefault(cur, [])
-        elif s == '}':
-            cur = None
-        elif cur is not None and s.startswith('sound/'):
+            pending = None
+            if cur:
+                shaders.setdefault(cur, [])
+            continue
+        if cur is not None and s.startswith('sound/'):
             shaders[cur].append(s)
+        elif cur is None:
+            pending = s
     return shaders
 
 

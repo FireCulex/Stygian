@@ -40,14 +40,26 @@ from idwav2wav import idwav_to_wave
 S_SHADER_RE = re.compile(r'"s_shader"\s+"([^"]+)"')
 VO_PATH_RE = re.compile(r'sound/vo/([^/]+)/', re.I)
 
+# Resurrection of Evil / Lost Mission vo dirs — never scanned (base game only).
+EXPANSION_VO_DIRS = {'erebus1', 'erebus2', 'erebus3', 'erebus4', 'erebus5', 'erebus6',
+                     'phobos1', 'phobos2', 'phobos3', 'phobos4',
+                     'enpro1', 'enpro2', 'exis', 'hell_post', 'underground'}
+
 # sound/vo/ subdirs that are NOT per-map level dialogue: PDA audio logs,
-# video-disk audio, generic AI chatter/taunts, MP ctf, end cinematic, and
-# the Lost Mission (le_*) dirs are separate later phases.
-GENERIC_VO_DIRS = {'_generic', 'audio_logs', 'combat_chatter', 'ctf', 'end',
-                   'exis', 'feedback', 'taunts', 'video',
-                   'erebus1', 'erebus2', 'erebus3', 'erebus4', 'erebus5', 'erebus6',
-                   'phobos1', 'phobos2', 'phobos3', 'phobos4',
-                   'enpro1', 'enpro2', 'hell_post', 'underground'}
+# video-disk audio, generic AI chatter/taunts, MP ctf, end cinematic.
+# Excluded from per-map discovery, but the --all-vo sweep DOES include the
+# generic chatter/taunts/feedback dirs (minus ALL_VO_EXCLUDE) so no voice
+# line is missed.
+GENERIC_VO_DIRS = ({'_generic', 'audio_logs', 'combat_chatter', 'ctf', 'end',
+                    'feedback', 'taunts', 'video'} | EXPANSION_VO_DIRS)
+
+# what --all-vo still refuses to touch: PDA audio logs, MP ctf, expansions.
+# NOTE: 'video' (sound/vo/video/) is INCLUDED — in BFG the videos are
+# sound/vo/video/*.RoQ played with these wavs as their audio track via
+# sound/video.sndshd (PDA video disks: SND_CHANNEL_PDA_VIDEO; in-game
+# camera cinematics: script-started), so transcribing them IS the
+# cinematic subtitle path.
+ALL_VO_EXCLUDE = ({'audio_logs', 'ctf'} | EXPANSION_VO_DIRS)
 
 
 def sanitize(name):

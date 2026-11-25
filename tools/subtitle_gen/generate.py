@@ -16,6 +16,12 @@ Optional:
                        common Steam roots) when omitted
     --server URL       whisper.cpp server (default http://127.0.0.1:8081)
     --maps a,b,c       only these maps (default: all base-game maps)
+    --all-vo           additionally sweep EVERY remaining sound/vo/ dir
+                       (combat_chatter, taunts, feedback, _generic, end,
+                       video, ...) organized as extracted/vo/<dir>/, so no
+                       voice line is missed; PDA audio_logs / MP ctf / RoE
+                       dirs stay excluded. 'video' = the RoQ cinematic /
+                       PDA video-disk audio tracks (sound/video.sndshd).
     --workdir DIR      extraction/cache workdir (default ./extracted, gitignored)
     --extract-only     extract WAVs + manifests but do not transcribe
     --no-cache         force re-transcription (ignore cached .whisper.json)
@@ -43,6 +49,10 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+import d3pack
+import extract_level
 
 # The 27 base-game campaign maps (order = campaign order).
 BASE_GAME_MAPS = [
@@ -140,6 +150,9 @@ def main(argv):
     ap.add_argument('--maps', default=None,
                     help='comma-separated subset of maps (default: all %d base-game maps)'
                          % len(BASE_GAME_MAPS))
+    ap.add_argument('--all-vo', action='store_true',
+                    help='also extract+transcribe every remaining sound/vo/ dir '
+                         '(chatter/taunts/etc.) into extracted/vo/<dir>/')
     ap.add_argument('--workdir', default=os.path.join(HERE, 'extracted'))
     ap.add_argument('--extract-only', action='store_true',
                     help='extract WAVs + manifests but do not transcribe')
@@ -159,24 +172,54 @@ def main(argv):
     print('server:  %s' % args.server)
     print('workdir: %s (whisper cache: %s)' % (workdir, cache))
 
-    want = set(args.maps.split(',')) if args.maps else None
-    maps = [m for m in BASE_GAME_MAPS if not want or m in want]
-    unknown = want - set(maps) if want else set()
+    if args.maps == 'none':
+        maps = []
+        unknown = set()
+    else:
+        want = set(args.maps.split(',')) if args.maps else None
+        maps = [m for m in BASE_GAME_MAPS if not want or m in want]
+        unknown = want - set(maps) if want else set()
     if unknown:
         sys.exit('unknown map(s): %s (known: %s)' % (', '.join(sorted(unknown)),
                                                       ', '.join(BASE_GAME_MAPS)))
 
+    # jobs: ('map', name) for each base-game map, plus ('vo', dir) for every
+    # remaining sound/vo/ dir when --all-vo (chatter/taunts/feedback/...)
+    jobs = [('map', m) for m in maps]
+    if args.all_vo:
+        probe = []
+        for pack in d3pack.iter_resource_packs(base):
+            try:
+                probe.append((pack, d3pack.read_table(pack)))
+            except (ValueError, OSError):
+                pass
+        vo_dirs = sorted(extract_level.all_vo_dirs(probe) - extract_level.ALL_VO_EXCLUDE)
+        # drop vo dirs already covered by the map jobs (their shaders were
+        # extracted per-map); the sweep only adds the generic dirs
+        covered = set()
+        for _kind, m in jobs:
+            covered |= extract_level.discover_map_vo_dirs(probe, m)
+        for v in vo_dirs:
+            if v not in covered:
+                jobs.append(('vo', v))
+        print('all-vo sweep adds dirs: %s' % ', '.join(v for k, v in jobs if k == 'vo'))
+
     speakers = merge_speakers(workdir, args.speakers)
 
     failures = []
-    for i, mp in enumerate(maps):
-        print('\n=== [%d/%d] map %s ===' % (i + 1, len(maps), mp), flush=True)
-        work = os.path.join(workdir, mp)
-        rc = run([sys.executable, os.path.join(HERE, 'extract_level.py'),
-                  '--base', base, '--map', mp, '--out', work])
+    for i, (kind, name) in enumerate(jobs):
+        print('\n=== [%d/%d] %s %s ===' % (i + 1, len(jobs), kind, name), flush=True)
+        work = os.path.join(workdir, name if kind == 'map' else os.path.join('vo', name))
+        ex = [sys.executable, os.path.join(HERE, 'extract_level.py'),
+              '--base', base, '--out', work]
+        if kind == 'map':
+            ex += ['--map', name]
+        else:
+            ex += ['--level', name]
+        rc = run(ex)
         if rc != 0:
-            print('EXTRACT FAILED (%d) for %s' % (rc, mp))
-            failures.append((mp, 'extract'))
+            print('EXTRACT FAILED (%d) for %s' % (rc, name))
+            failures.append((name, 'extract'))
             continue
         if args.extract_only:
             continue
@@ -191,9 +234,9 @@ def main(argv):
             cmd += ['--per-shader']
         rc = run(cmd)
         if rc != 0:
-            failures.append((mp, 'transcribe'))
+            failures.append((name, 'transcribe'))
 
-    print('\n==== done: %d/%d maps ok ====' % (len(maps) - len(failures), len(maps)))
+    print('\n==== done: %d/%d units ok ====' % (len(jobs) - len(failures), len(jobs)))
     if failures:
         print('failures: %s' % ', '.join('%s (%s)' % f for f in failures))
     print('combined subtitles: %s' % os.path.join(out, 'subtitles.json'))
