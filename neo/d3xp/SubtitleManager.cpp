@@ -31,6 +31,8 @@
 #pragma hdrstop
 
 #include "Game_local.h"
+#include "Player.h"
+#include "Entity.h"
 #include "../framework/DeclManager.h"
 #include "../sound/sound.h"
 #include "SubtitleManager.h"
@@ -267,6 +269,14 @@ void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int
 		}
 	}
 
+	// audibility data from the sound shader decl (same parms the emitter
+	// uses for distance attenuation); raw wave paths with no decl count as
+	// global — we cannot know better
+	const idSoundShader *sndSh = declManager->FindSound( shaderName, false );
+	const bool globalSnd = ( sndSh != NULL && ( sndSh->GetParms()->soundShaderFlags & SSF_GLOBAL ) != 0 );
+	const float maxDistM = ( sndSh != NULL ) ? sndSh->GetMaxDistance() : 0.0f;
+	const int entNum = ( ent != NULL ) ? ent->GetEntityNumber() : -1;
+
 	// re-fire of an already-displayed shader: restart its clock instead of
 	// stacking a duplicate
 	for ( int i = 0; i < actives.Num(); i++ ) {
@@ -274,6 +284,10 @@ void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int
 			actives[i].startTime = gameLocal.time;
 			actives[i].soundLength = lengthMs;
 			actives[i].lastShownCue = -1;
+			actives[i].entNum = entNum;
+			actives[i].channel = channel;
+			actives[i].globalSnd = globalSnd;
+			actives[i].maxDistM = maxDistM;
 			ev.displayed = true;
 			return;
 		}
@@ -289,7 +303,68 @@ void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int
 	a.startTime = gameLocal.time;
 	a.soundLength = lengthMs;
 	a.lastShownCue = -1;		// Draw() logs each cue as it actually appears
+	a.entNum = entNum;
+	a.channel = channel;
+	a.globalSnd = globalSnd;
+	a.maxDistM = maxDistM;
 	ev.displayed = true;
+}
+
+/*
+  ====================
+  idSubtitleManager::OnSoundStop
+
+  The sound was stopped explicitly (e.g. PDA video audio when the PDA is
+  closed) — drop its subtitle immediately instead of letting it catch up
+  through the remaining cues with no audio.
+  ====================
+  */
+void idSubtitleManager::OnSoundStop( idEntity *ent, int channel ) {
+	if ( ent == NULL ) {
+		return;
+	}
+	const int entNum = ent->GetEntityNumber();
+	for ( int i = actives.Num() - 1; i >= 0; i-- ) {
+		if ( actives[i].entNum == entNum && ( channel == SND_CHANNEL_ANY || actives[i].channel == channel ) ) {
+			actives.RemoveIndex( i );
+		}
+	}
+}
+
+/*
+  ====================
+  idSubtitleManager::Audible
+
+  Mirrors idSoundEmitterLocal's attenuation: a non-global sound on another
+  entity is silent once distance >= maxDistance (meters). Sounds on the
+  player itself are always heard (the player's emitter is the listener),
+  as are SSF_GLOBAL sounds (radio/PDA-style shaders mark themselves global
+  when they should be heard regardless of distance).
+  ====================
+  */
+bool idSubtitleManager::Audible( const ActiveSub &a ) const {
+	if ( a.globalSnd || a.entNum < 0 ) {
+		return true;
+	}
+	idPlayer *player = gameLocal.GetLocalPlayer();
+	if ( player == NULL ) {
+		return true;
+	}
+	if ( player->entityNumber == a.entNum ) {
+		return true;	// own emitter = the listener
+	}
+	if ( a.entNum >= MAX_GENTITIES ) {
+		return false;
+	}
+	idEntity *ent = gameLocal.entities[a.entNum];
+	if ( ent == NULL ) {
+		return false;	// entity gone -> its sound is gone
+	}
+	if ( a.maxDistM <= 0.0f ) {
+		return true;
+	}
+	const float distM = ( ent->GetPhysics()->GetOrigin() - player->GetEyePosition() ).Length() * DOOM_TO_METERS;
+	return distM < a.maxDistM;
 }
 
 /*
@@ -338,10 +413,12 @@ void idSubtitleManager::Draw() {
 	// nearly edge to edge
 	const float maxTextW = VIRTUAL_WIDTH * 0.65f;
 
-	// collect live entries (oldest first = bottom-most)
+	// collect live entries (oldest first = bottom-most); an entry whose
+	// sound is out of earshot right now is not shown (walking back into
+	// earshot shows it again)
 	idList< const ActiveSub * > live;
 	for ( int i = 0; i < actives.Num(); i++ ) {
-		if ( EntryLive( actives[i] ) ) {
+		if ( EntryLive( actives[i] ) && Audible( actives[i] ) ) {
 			live.Append( &actives[i] );
 		}
 	}

@@ -70,6 +70,10 @@ public:
 	// channel is the SND_CHANNEL_* the sound was started on.
 	void					OnSoundStart( idEntity *ent, const char *shaderName, int lengthMs, int channel );
 
+	// Called from idEntity::StopSound — a stopped sound must not keep its
+	// subtitle on screen (e.g. PDA video audio when the PDA is closed).
+	void					OnSoundStop( idEntity *ent, int channel );
+
 	// Called every frame from idPlayer::UpdateHud (after the HUD render).
 	void					Draw();
 
@@ -95,6 +99,10 @@ private:
 		int						startTime;		// gameLocal.time when the sound started
 		int						soundLength;	// ms, 0 if unknown
 		int						lastShownCue;	// cue index currently on screen (-1 = none), for debug logging
+		int						entNum;			// entityNumber of the speaking entity, -1 = none/global
+		int						channel;		// SND_CHANNEL_* the sound plays on
+		float					maxDistM;		// sound shader max distance in meters (audibility)
+		bool					globalSnd;		// SSF_GLOBAL — heard everywhere, no distance falloff
 	};
 
 	// effective on-screen duration of an entry: the last cue's end (clamped
@@ -104,6 +112,12 @@ private:
 
 	// true while the entry is still within its duration + linger window
 	bool					EntryLive( const ActiveSub &a ) const;
+
+	// true when the sound would actually be heard at the local player's
+	// position — mirrors the emitter's distance attenuation (global sounds
+	// and sounds on the player itself are always heard; otherwise
+	// distance >= shader maxDistance means silence)
+	bool					Audible( const ActiveSub &a ) const;
 
 	idSubtitleFile			file;
 	idStr					loadedName;			// file name the current data came from

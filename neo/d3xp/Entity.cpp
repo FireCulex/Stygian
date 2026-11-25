@@ -1709,6 +1709,9 @@ void idEntity::StopSound( const s_channelType channel, bool broadcast ) {
 		return;
 	}
 
+	// subtitle hook: a stopped sound must not keep its subtitle on screen
+	subtitleManager.OnSoundStop( this, channel );
+
 	if ( common->IsServer() && broadcast ) {
 		idBitMsg	msg;
 		byte		msgBuf[MAX_EVENT_PARAM_SIZE];
