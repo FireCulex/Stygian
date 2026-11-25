@@ -158,6 +158,10 @@ public:
 	// Release the mouse when the PDA is open
 	virtual bool				IsPDAOpen() const = 0;
 	virtual bool				IsPlayerChatting() const = 0;
+
+	// Draw the subtitle overlay on top of the PDA/menus (called from the
+	// post-dialog render pass, when the HUD itself is not drawn)
+	virtual void				DrawSubtitleOverlayIfPDAOpen() {}
 	
 	// Creates leaderboards for each map/mode defined.
 	virtual void				Leaderboards_Init() = 0;

@@ -283,6 +283,13 @@ void idCommonLocal::Draw() {
 
 		Dialog().Render( loadGUI != NULL );
 
+		// while the PDA is open the HUD (and with it the subtitle overlay) is
+		// not drawn — but PDA video audio keeps playing, so draw subtitles on
+		// top of the PDA here (later 2D surfaces render on top in the HUD pass)
+		if ( Game() != NULL && Game()->IsPDAOpen() ) {
+			Game()->DrawSubtitleOverlayIfPDAOpen();
+		}
+
 		// draw the half console / notify console on top of everything
 		console->Draw( false );
 	}

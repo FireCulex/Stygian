@@ -466,6 +466,7 @@ public:
 	idPlayer *				GetClientByNum( int current ) const;
 
 	idPlayer *				GetLocalPlayer() const;
+	virtual void			DrawSubtitleOverlayIfPDAOpen();
 
 	void					SpreadLocations();
 	idLocationEntity *		LocationForPoint( const idVec3 &point );	// May return NULL

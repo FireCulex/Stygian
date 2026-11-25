@@ -4802,6 +4802,22 @@ bool idGameLocal::IsPDAOpen() const {
 
 /*
 ========================
+idGameLocal::DrawSubtitleOverlayIfPDAOpen
+
+Called from the post-dialog render pass: while the PDA is open the HUD (and
+with it the subtitle overlay) is not drawn, but PDA video audio keeps
+playing through sound shaders — keep its subtitles on screen, on top of
+the PDA.
+========================
+*/
+void idGameLocal::DrawSubtitleOverlayIfPDAOpen() {
+	if ( IsPDAOpen() ) {
+		subtitleManager.Draw();
+	}
+}
+
+/*
+========================
 idGameLocal::IsPlayerChatting
 ========================
 */
