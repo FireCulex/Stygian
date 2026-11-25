@@ -31,6 +31,7 @@ Build dir `neo/build_linux` is already configured (Unix Makefiles, `BUILD_FULL_G
 
 ## Hard constraints
 
+- **Provenance (user policy, 2026-11-23): this port is a clean-room implementation of our own — not based on other projects (no RBDOOM-3-BFG or other forks). Do not copy code from third-party projects.** Same-license (GPL) projects may be consulted as *hints only* to understand intended engine behavior (anything GPL is safe to look at license-wise), but the goal is to keep the implementation ours — never import files or code wholesale.
 - Engine-only fixes: everything under `neo/`. `base/` stays stock, and the engine must not depend on loose files in `base/` — shadow-map code stays inert with stock assets (missing shadow programs → progId 0 → clean stencil fallback); no embedded/recreated shaders.
 - Single-player only: `ID_SINGLEPLAYER_ONLY` plus CMake `list(REMOVE_ITEM ...)` excludes MP/lobby; Linux stubs live in `neo/sys/sdl/*_stub.cpp`.
 - GPL release exclusions: no Steam integration, no Carmack's Reverse.
@@ -54,4 +55,13 @@ SDL requests an OpenGL 4.5 **compat** context (Mesa grants 4.6). Renderprogs shi
 2. B8b: static on in-game videoMap display screens.
 3. B5: flashlight overbright wedge with hard cutoff.
 
-No `int` memory project exists for this repo — `BUGS.md` is where session prefs live. Post a short status update on the hour when working.
+## Session memory (`int` project `doom-3-bfg`)
+
+An `int` memory project named **`doom-3-bfg`** exists and is expected to be used **multiple times per session**, not just at the end:
+
+- **Recall first**: before grep/glob/read/web-searching for a known fact, call `int.search({ project: "doom-3-bfg", query })` (`int.list` for a recency scan, `int.get` by id for full content). Prior sessions' discoveries live there.
+- **Persist continuously**: call `int.add` the moment a durable fact is learned — multi-step findings, root causes, architecture/config decisions, bug fixes, negative facts ("X fails because Y"). Do not batch to end of session.
+- **Compaction survival**: some bug fixes span multiple context compactions. Anything that must survive compaction goes into `int` immediately; after a compaction, re-run `int.search` instead of re-deriving from scratch. Conversation history is not durable — `int` is.
+- `BUGS.md` remains the source of truth for open bugs (B1–B9) and session working agreements; `int` holds the cross-session discoveries that BUGS.md does not track.
+
+Post a short status update on the hour when working.
