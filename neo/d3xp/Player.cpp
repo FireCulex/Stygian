@@ -3189,10 +3189,20 @@ idPlayer::DrawHUD
 void idPlayer::DrawHUD( idMenuHandler_HUD * _hudManager ) {
 	SCOPED_PROFILE_EVENT( "idPlayer::DrawHUD" );
 
-	if ( !weapon.GetEntity() || influenceActive != INFLUENCE_NONE || privateCameraView || gameLocal.GetCamera() || !g_showHud.GetBool() ) {
+	if ( !weapon.GetEntity() || influenceActive != INFLUENCE_NONE || privateCameraView || !g_showHud.GetBool() ) {
 		return;
-	} 
-	
+	}
+
+	if ( gameLocal.GetCamera() ) {
+		// no HUD on security cameras / cinematic cameras — but during a
+		// cinematic the video's voice track still plays through sound
+		// shaders, so keep its subtitles on screen
+		if ( gameLocal.inCinematic ) {
+			subtitleManager.Draw();
+		}
+		return;
+	}
+
 	if ( common->IsMultiplayer() ) {
 		UpdateChattingHud();
 		UpdateSpectatingText();

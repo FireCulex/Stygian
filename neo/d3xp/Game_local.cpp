@@ -955,6 +955,11 @@ void idGameLocal::LoadMap( const char * mapName, int randseed ) {
 	framenum		= 0;
 	sessionCommand = "";
 	endLevel		= NULL;			// Linux port (B10): clear end-level state on every map load
+	// Linux port (B15): gameLocal.time restarts at 0 on every map, so a subtitle
+	// still active from the previous map would compute a negative elapsed time
+	// and re-enter its cue window minutes into the new map (stale dialogue shown
+	// on the wrong map, with no audio).  Drop all subtitle state on map load.
+	subtitleManager.Shutdown();
 	nextGibTime		= 0;
 
 	portalSkyEnt			= NULL;
