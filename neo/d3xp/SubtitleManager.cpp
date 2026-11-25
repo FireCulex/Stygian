@@ -31,14 +31,15 @@
 #pragma hdrstop
 
 #include "Game_local.h"
+#include "../framework/DeclManager.h"
+#include "../sound/sound.h"
 #include "SubtitleManager.h"
 
 idCVar ui_subtitles( "ui_subtitles", "1", CVAR_ARCHIVE | CVAR_INTEGER, "subtitle display: 0 = off, 1 = on", 0, 1 );
 idCVar ui_subtitleFile( "ui_subtitleFile", "subtitles/subtitles.json", CVAR_ARCHIVE, "subtitle file, relative to the game dir" );
-idCVar ui_subtitleExtraTime( "ui_subtitleExtraTime", "2500", CVAR_ARCHIVE | CVAR_INTEGER, "ms a subtitle stays visible after its sound ended" );
+idCVar ui_subtitleExtraTime( "ui_subtitleExtraTime", "0", CVAR_ARCHIVE | CVAR_INTEGER, "ms a subtitle stays visible after its last cue ended" );
 idCVar ui_subtitleScale( "ui_subtitleScale", "0.44", CVAR_FLOAT, "subtitle font scale (~20% smaller than the old 0.55: line pitch drops from ~6% to ~5% of screen height)", 0.25f, 0.5f );
-idCVar ui_subtitleBgAlpha( "ui_subtitleBgAlpha", "0.25", CVAR_ARCHIVE | CVAR_FLOAT, "subtitle background alpha (faint box)", 0.0f, 0.3f );
-idCVar ui_subtitleDebug( "ui_subtitleDebug", "0", CVAR_ARCHIVE | CVAR_BOOL, "log subtitle events: entry sounds, voice/radio plays, and each cue as it appears on screen" );
+idCVar ui_subtitleDebug( "ui_subtitleDebug", "0", CVAR_ARCHIVE | CVAR_INTEGER, "log sound starts: 1 = subtitle entries + radio/raw-vo dialogue + cues on screen; 2 = every speech start (VOICE/VOICE2/RADIO/PDA + sound/vo/ waves on ANY, e.g. cinematic sound_global) with entity name — BODY excluded (prop spam)", 0, 2 );
 
 idSubtitleManager subtitleManager;
 
@@ -61,11 +62,7 @@ static void SubtitleReload_f( const idCmdArgs &args ) {
   ====================
   */
 idSubtitleManager::idSubtitleManager() {
-	active = false;
-	activeData = NULL;
-	startTime = 0;
-	soundLength = 0;
-	lastShownCue = -1;
+	actives.Clear();
 	lastTime = -kSubtitleDebounceMs - 1;
 	dcReady = false;
 	cmdSystem->AddCommand( "subtitle_reload", SubtitleReload_f, CMD_FL_SYSTEM, "reload the subtitle file" );
@@ -80,9 +77,7 @@ idSubtitleManager::idSubtitleManager() {
   ====================
   */
 void idSubtitleManager::Shutdown() {
-	active = false;
-	activeData = NULL;
-	lastShownCue = -1;
+	actives.Clear();
 	dcReady = false;
 	loadedName.Clear();
 	file.Clear();
@@ -97,13 +92,12 @@ void idSubtitleManager::Shutdown() {
   ====================
   */
 void idSubtitleManager::Reload() {
-	active = false;
-	activeData = NULL;
+	actives.Clear();
 	loadedName.Clear();
 	file.Clear();
 	EnsureLoaded();
 
-	if ( ui_subtitleDebug.GetBool() && file.IsLoaded() ) {
+	if ( ui_subtitleDebug.GetInteger() >= 1 && file.IsLoaded() ) {
 		idLib::Printf( "Subtitles: %d sound(s) from '%s'\n", file.NumSounds(), file.GetFileName() );
 		for ( int i = 0; i < file.NumSounds(); i++ ) {
 			const idSubtitleData *d = file.GetSoundData( i );
@@ -127,7 +121,7 @@ void idSubtitleManager::EnsureLoaded() {
 	}
 	loadedName = fileName;
 	file.Load( fileName );
-	if ( ui_subtitleDebug.GetBool() && file.IsLoaded() ) {
+	if ( ui_subtitleDebug.GetInteger() >= 1 && file.IsLoaded() ) {
 		idLib::Printf( "Subtitles: %d sound(s) from '%s'\n", file.NumSounds(), file.GetFileName() );
 		for ( int i = 0; i < file.NumSounds(); i++ ) {
 			const idSubtitleData *d = file.GetSoundData( i );
@@ -165,11 +159,24 @@ bool idSubtitleManager::IsSubtitleSound( const char *shaderName ) {
     each displayed cue is logged from Draw() as it appears on screen;
   - display is driven purely by the presence of an entry for the
     shader — no channel filtering (covers VOICE, RADIO and speaker
-    entities playing raw wave paths).
+    entities playing raw wave paths);
+  - a pure sound-effect caption ("(screaming)" & co, flagged sfxCaption
+    at load) may display when nothing else is active, but NEVER preempts
+    a live dialogue subtitle — looping monster screams used to override
+    radio lines with this.
   ====================
   */
 void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int lengthMs, int channel ) {
 	if ( shaderName == NULL || shaderName[0] == '\0' ) {
+		return;
+	}
+
+	// blacklist: combat barks ("combat_chatter" -> "(screaming)" spam) never
+	// produce subtitles and are not logged. Raw sound/vo/ wave paths are never
+	// blacklisted, so real dialogue like science_team_chatter.wav still works.
+	const bool isBlacklisted = idStr::Icmpn( shaderName, "sound/vo/", 9 ) != 0
+		&& idStr( shaderName ).Find( "combat_chatter", false ) >= 0;
+	if ( isBlacklisted ) {
 		return;
 	}
 
@@ -197,7 +204,44 @@ void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int
 	ev.displayed = false;
 
 	// tiered console logging
-	if ( ui_subtitleDebug.GetBool() ) {
+	const int dbg = ui_subtitleDebug.GetInteger();
+	if ( dbg >= 2 ) {
+		// every speech start, with the speaking entity — this is how you find
+		// WHICH wav a guy standing next to you is playing. BODY channels
+		// excluded: props/machinery/footsteps spam them constantly.
+		bool speech = channel == SND_CHANNEL_VOICE || channel == SND_CHANNEL_VOICE2
+			|| channel == SND_CHANNEL_RADIO || channel == SND_CHANNEL_PDA_AUDIO
+			|| channel == SND_CHANNEL_PDA_VIDEO;
+		if ( !speech ) {
+			// anim frame commands ("sound_global" etc.) play voice on
+			// SND_CHANNEL_ANY — still log those when the shader's wave
+			// actually lives under sound/vo/ (e.g. marscity_rocketintro_vo)
+			if ( idStr::Icmpn( shaderName, "sound/vo/", 9 ) == 0 ) {
+				speech = true;
+			} else {
+				const idSoundShader *sh = declManager->FindSound( shaderName, false );
+				if ( sh != NULL ) {
+					for ( int i = 0; i < sh->GetNumSounds(); i++ ) {
+						const char *w = sh->GetSound( i );
+						if ( w != NULL && idStr::Icmpn( w, "sound/vo/", 9 ) == 0 ) {
+							speech = true;
+							break;
+						}
+					}
+				}
+			}
+		}
+		if ( speech ) {
+			// skip AI chatter decls (monster_*_chatter etc.) — pure spam; raw
+			// sound/vo/ wave paths are still logged
+			const bool chatterDecl = idStr::Icmpn( shaderName, "sound/vo/", 9 ) != 0
+				&& idStr( shaderName ).Find( "_chatter", false ) >= 0;
+			if ( !chatterDecl ) {
+				idLib::Printf( "PlayWav: %s ch=%d ent=%s len=%dms%s\n", shaderName, channel,
+					ent != NULL ? ent->GetName() : "?", lengthMs, data != NULL ? " [subtitle]" : "" );
+			}
+		}
+	} else if ( dbg >= 1 ) {
 		if ( data != NULL ) {
 			idLib::Printf( "Subtitle: %s speaker='%s' cues=%d len=%dms\n",
 				shaderName, data->speaker.c_str(), data->cues.Num(), lengthMs );
@@ -214,12 +258,61 @@ void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int
 		return;
 	}
 
-	active = true;
-	activeData = data;
-	startTime = gameLocal.time;
-	soundLength = lengthMs;
+	// sound-effect captions never preempt a live dialogue subtitle
+	if ( data->sfxCaption ) {
+		for ( int i = 0; i < actives.Num(); i++ ) {
+			if ( !actives[i].data->sfxCaption && EntryLive( actives[i] ) ) {
+				return;
+			}
+		}
+	}
+
+	// re-fire of an already-displayed shader: restart its clock instead of
+	// stacking a duplicate
+	for ( int i = 0; i < actives.Num(); i++ ) {
+		if ( actives[i].data == data ) {
+			actives[i].startTime = gameLocal.time;
+			actives[i].soundLength = lengthMs;
+			actives[i].lastShownCue = -1;
+			ev.displayed = true;
+			return;
+		}
+	}
+
+	// stack overlapping speakers (cinematic VO overlaps a lot); when full,
+	// drop the oldest
+	if ( actives.Num() >= kMaxActive ) {
+		actives.RemoveIndex( 0 );
+	}
+	ActiveSub &a = actives.Alloc();
+	a.data = data;
+	a.startTime = gameLocal.time;
+	a.soundLength = lengthMs;
+	a.lastShownCue = -1;		// Draw() logs each cue as it actually appears
 	ev.displayed = true;
-	lastShownCue = -1;		// Draw() logs each cue as it actually appears
+}
+
+/*
+  ====================
+  idSubtitleManager::EntryDuration / EntryLive
+
+  Effective on-screen window of one stacked subtitle (same test Draw()
+  uses to hide it).
+  ====================
+  */
+int idSubtitleManager::EntryDuration( const ActiveSub &a ) {
+	if ( a.data == NULL || a.data->cues.Num() == 0 ) {
+		return a.soundLength;
+	}
+	const int lastCueEnd = a.data->cues[a.data->cues.Num() - 1].end;
+	// when the sound length is known, never outlast the last cue by more
+	// than the sound itself (wav padding/music is not dialogue)
+	return ( a.soundLength > 0 && a.soundLength < lastCueEnd ) ? a.soundLength : lastCueEnd;
+}
+
+bool idSubtitleManager::EntryLive( const ActiveSub &a ) const {
+	const int elapsed = gameLocal.time - a.startTime;
+	return elapsed <= EntryDuration( a ) + ui_subtitleExtraTime.GetInteger();
 }
 
 /*
@@ -228,50 +321,8 @@ void idSubtitleManager::OnSoundStart( idEntity *ent, const char *shaderName, int
   ====================
   */
 void idSubtitleManager::Draw() {
-	if ( ui_subtitles.GetBool() == false || !active || activeData == NULL ) {
+	if ( ui_subtitles.GetBool() == false || actives.Num() == 0 ) {
 		return;
-	}
-
-	const int elapsed = gameLocal.time - startTime;
-
-	// hide when the sound is over (plus linger); fall back to the last cue's end
-	int duration = soundLength;
-	if ( duration <= 0 && activeData->cues.Num() > 0 ) {
-		duration = activeData->cues[activeData->cues.Num() - 1].end;
-	}
-	if ( elapsed > duration + ui_subtitleExtraTime.GetInteger() ) {
-		active = false;
-		activeData = NULL;
-		return;
-	}
-
-	// show the current cue only: the last cue whose start time has passed
-	int cueIndex = -1;
-	for ( int i = 0; i < activeData->cues.Num(); i++ ) {
-		if ( activeData->cues[i].start > elapsed ) {
-			break;
-		}
-		cueIndex = i;
-	}
-	if ( cueIndex < 0 ) {
-		return;
-	}
-	const idSubtitleCue *cue = &activeData->cues[cueIndex];
-
-	// on-screen text is the cue only — the speaker name is deliberately not
-	// drawn (it stays in the debug log and the subtitle event ring)
-	const idStr text = cue->text;
-
-	// log each cue as it appears on screen, speaker included for context
-	if ( ui_subtitleDebug.GetBool() && cueIndex != lastShownCue ) {
-		idStr logText;
-		if ( !activeData->speaker.IsEmpty() ) {
-			logText = activeData->speaker;
-			logText += ": ";
-		}
-		logText += cue->text;
-		idLib::Printf( "SUBTITLE: \"%s\"\n", logText.c_str() );
-		lastShownCue = cueIndex;
 	}
 
 	if ( !dcReady ) {
@@ -283,67 +334,147 @@ void idSubtitleManager::Draw() {
 	// clamp here too: a stale archived value (e.g. 0.55) must not blow up the display
 	const float scale = idMath::ClampFloat( 0.25f, 0.5f, ui_subtitleScale.GetFloat() );
 	const float lineH = (float)dc.MaxCharHeight( scale );
-	const float padX = 12.0f;
-	const float padY = 6.0f;
-	// cap the wrap width at ~65% of the screen (box incl. padding <= ~69%),
-	// so the box no longer runs nearly edge to edge
+	// cap the wrap width at ~65% of the screen, so long lines don't run
+	// nearly edge to edge
 	const float maxTextW = VIRTUAL_WIDTH * 0.65f;
 
-	// Size the box with the SAME metric DrawText wraps with (TextWidth per
-	// segment). Summing per-char CharWidth drifted from the real glyph widths,
-	// which made long cues one line short and clipped their wrapped tail.
-	int lines = 0;
-	float textW = 0.0f;
-	idStr seg;
-	for ( int i = 0; ; i++ ) {
-		const char c = text[i];
-		if ( c == '\n' || c == '\0' ) {
-			const float w = (float)dc.TextWidth( seg.c_str(), scale, 0 );
-			lines += ( w > maxTextW ? (int)( w / maxTextW ) + 1 : 1 );
-			if ( w > textW ) {
-				textW = w;
-			}
-			seg.Clear();
-			if ( c == '\0' ) {
-				break;
-			}
-		} else {
-			seg += c;
+	// collect live entries (oldest first = bottom-most)
+	idList< const ActiveSub * > live;
+	for ( int i = 0; i < actives.Num(); i++ ) {
+		if ( EntryLive( actives[i] ) ) {
+			live.Append( &actives[i] );
 		}
 	}
-	if ( lines < 1 ) {
-		lines = 1;
+	// purge expired
+	for ( int i = actives.Num() - 1; i >= 0; i-- ) {
+		if ( !EntryLive( actives[i] ) ) {
+			actives.RemoveIndex( i );
+		}
+	}
+	if ( live.Num() == 0 ) {
+		return;
 	}
 
-	const float boxW = ( textW < maxTextW ? textW : maxTextW ) + 2.0f * padX;
-	// DrawText advances y by (lineSkip + 5) per wrapped line and clips any
-	// line past the rect bottom (DeviceContext.cpp), so the box must reserve
-	// that extra 5 per additional line or the wrapped tail gets clipped.
-	const float boxH = lines * lineH + ( lines - 1 ) * 5.0f + 2.0f * padY;
-	const float boxX = ( VIRTUAL_WIDTH - boxW ) * 0.5f;
-	// bottom center, raised ~5% of the screen height so the box clears the
-	// HUD ammo counter and the health/armor strip
-	const float boxY = VIRTUAL_HEIGHT - boxH - 24.0f - VIRTUAL_HEIGHT * 0.05f;
+	// build all text rects first (measure without drawing)
+	struct Measured {
+		ActiveSub *			entry;
+		idStr				text;
+		int					cueIndex;
+		idRectangle			rect;
+	};
+	idList< Measured, TAG_SUBTITLE > measured;
+	for ( int i = 0; i < live.Num(); i++ ) {
+		ActiveSub *a = const_cast< ActiveSub * >( live[i] );
+		const int elapsed = gameLocal.time - a->startTime;
 
-	// soft drop shadow: stacked expanding rects, darkest at the box edge and
-	// fading out over ~3px (blur). A hard offset shadow alone gets lost on
-	// bright surfaces; this holds up everywhere.
-	const int kShadowLayers = 3;
-	const float kShadowAlpha = 0.9f;
-	for ( int i = kShadowLayers; i >= 1; i-- ) {
-		const float expand = (float)i;
-		const float a = kShadowAlpha * ( 1.0f - (float)i / (float)( kShadowLayers + 1 ) );
-		dc.DrawFilledRect( boxX - expand, boxY - expand, boxW + 2.0f * expand, boxH + 2.0f * expand,
-			idVec4( 0.0f, 0.0f, 0.0f, a ) );
+		// current cue: the last cue whose start time has passed — but only
+		// while its own end has not passed either, so a cue never lingers
+		// into the pause before the next cue
+		int cueIndex = -1;
+		for ( int j = 0; j < a->data->cues.Num(); j++ ) {
+			if ( a->data->cues[j].start > elapsed ) {
+				break;
+			}
+			cueIndex = j;
+		}
+		if ( cueIndex < 0 ) {
+			continue;
+		}
+		const idSubtitleCue *cue = &a->data->cues[cueIndex];
+		if ( elapsed > cue->end ) {
+			continue;
+		}
+
+		// on-screen text is the cue only — the speaker name is deliberately not
+		// drawn (it stays in the debug log and the subtitle event ring)
+		const idStr text = cue->text;
+
+		// measure wrapped lines with the SAME metric DrawText wraps with
+		// (TextWidth per segment). Summing per-char CharWidth drifted from
+		// the real glyph widths, which made long cues one line short and
+		// clipped their wrapped tail.
+		int lines = 0;
+		float textW = 0.0f;
+		idStr seg;
+		for ( int k = 0; ; k++ ) {
+			const char c = text[k];
+			if ( c == '\n' || c == '\0' ) {
+				const float w = (float)dc.TextWidth( seg.c_str(), scale, 0 );
+				lines += ( w > maxTextW ? (int)( w / maxTextW ) + 1 : 1 );
+				if ( w > textW ) {
+					textW = w;
+				}
+				seg.Clear();
+				if ( c == '\0' ) {
+					break;
+				}
+			} else {
+				seg += c;
+			}
+		}
+		if ( lines < 1 ) {
+			lines = 1;
+		}
+
+		const float rectW = ( textW < maxTextW ? textW : maxTextW );
+		// DrawText advances y by (lineSkip + 5) per wrapped line and clips any
+		// line past the rect bottom (DeviceContext.cpp), so the rect must
+		// reserve that extra 5 per additional line or the tail gets clipped.
+		const float rectH = lines * lineH + ( lines - 1 ) * 5.0f;
+		const float rectX = ( VIRTUAL_WIDTH - rectW ) * 0.5f;
+		// bottom center, raised ~5% of the screen height so the text clears the
+		// HUD ammo counter and the health/armor strip
+		const float rectY = VIRTUAL_HEIGHT - rectH - 24.0f - VIRTUAL_HEIGHT * 0.05f;
+
+		Measured m;
+		m.entry = a;
+		m.text = text;
+		m.cueIndex = cueIndex;
+		m.rect = idRectangle( rectX, rectY, rectW, rectH );
+		measured.Append( m );
+
+		// log each cue as it appears on screen, speaker included for context
+		if ( ui_subtitleDebug.GetInteger() >= 1 && cueIndex != a->lastShownCue ) {
+			idStr logText;
+			if ( !a->data->speaker.IsEmpty() ) {
+				logText = a->data->speaker;
+				logText += ": ";
+			}
+			logText += cue->text;
+			idLib::Printf( "SUBTITLE: \"%s\"\n", logText.c_str() );
+			a->lastShownCue = cueIndex;
+		}
+	}
+	if ( measured.Num() == 0 ) {
+		return;
 	}
 
-	// faint background box (~20-30% opacity)
-	const float bgAlpha = idMath::ClampFloat( 0.0f, 0.3f, ui_subtitleBgAlpha.GetFloat() );
-	dc.DrawFilledRect( boxX, boxY, boxW, boxH, idVec4( 0.0f, 0.0f, 0.0f, bgAlpha ) );
-
-	// thin black outline on the box edge, so it also reads on dark scenes
-	dc.DrawRect( boxX, boxY, boxW, boxH, 1.0f, idVec4( 0.0f, 0.0f, 0.0f, 0.9f ) );
-
-	dc.DrawText( text.c_str(), scale, idDeviceContext::ALIGN_CENTER, idVec4( 1.0f, 1.0f, 1.0f, 1.0f ),
-		idRectangle( boxX + padX, boxY + padY, boxW - 2.0f * padX, boxH - 2.0f * padY ), true );
+	// draw stacked, oldest at the bottom, newest on top, small gap between
+	// blocks. Hard-sub style per line: drop shadow, black outline (8 offsets),
+	// white face LAST — in the HUD 2D pass later-inserted surfaces render ON
+	// TOP, so the face must be inserted last or the text comes out black.
+	// NO background box (user request 2026-11-24). The rect is passed to
+	// DrawText for wrap/centering.
+	const float kLineGap = 2.0f;
+	const float kShadowOff = 2.0f;
+	const float kOutline = 1.5f;
+	static const float kDirs[8][2] = {
+		{ 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 }, { 1, 1 }, { 1, -1 }, { -1, 1 }, { -1, -1 }
+	};
+	float cursorY = measured[0].rect.y;		// start from the bottom-most block
+	for ( int i = 0; i < measured.Num(); i++ ) {
+		const Measured &m = measured[i];
+		idRectangle r = m.rect;
+		r.y = cursorY;
+		idRectangle sr = r;
+		sr.Offset( kShadowOff, kShadowOff );
+		dc.DrawText( m.text.c_str(), scale, idDeviceContext::ALIGN_CENTER, idVec4( 0.0f, 0.0f, 0.0f, 0.85f ), sr, true );
+		for ( int j = 0; j < 8; j++ ) {
+			sr = r;
+			sr.Offset( kOutline * kDirs[j][0], kOutline * kDirs[j][1] );
+			dc.DrawText( m.text.c_str(), scale, idDeviceContext::ALIGN_CENTER, idVec4( 0.0f, 0.0f, 0.0f, 1.0f ), sr, true );
+		}
+		dc.DrawText( m.text.c_str(), scale, idDeviceContext::ALIGN_CENTER, idVec4( 1.0f, 1.0f, 1.0f, 1.0f ), r, true );
+		cursorY -= m.rect.h + kLineGap;
+	}
 }

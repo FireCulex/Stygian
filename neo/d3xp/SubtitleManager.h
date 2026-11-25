@@ -89,14 +89,28 @@ public:
 private:
 	void					EnsureLoaded();
 
+	// one live on-screen subtitle (a sound with an entry is playing)
+	struct ActiveSub {
+		const idSubtitleData *	data;
+		int						startTime;		// gameLocal.time when the sound started
+		int						soundLength;	// ms, 0 if unknown
+		int						lastShownCue;	// cue index currently on screen (-1 = none), for debug logging
+	};
+
+	// effective on-screen duration of an entry: the last cue's end (clamped
+	// to the sound length when known) — wavs often carry music/padding past
+	// the last spoken cue, and showing until sound end made subs linger
+	static int				EntryDuration( const ActiveSub &a );
+
+	// true while the entry is still within its duration + linger window
+	bool					EntryLive( const ActiveSub &a ) const;
+
 	idSubtitleFile			file;
 	idStr					loadedName;			// file name the current data came from
 
-	bool					active;
-	const idSubtitleData *	activeData;
-	int						startTime;			// gameLocal.time when the sound started
-	int						soundLength;		// ms, 0 if unknown
-	int						lastShownCue;		// cue index currently on screen (-1 = none), for debug logging
+	idList< ActiveSub, TAG_SUBTITLE >
+							actives;			// live subtitles, oldest first; drawn stacked (newest on top)
+	static const int		kMaxActive = 3;		// max simultaneous on-screen subtitles
 
 	idList< idSubtitleEvent, TAG_SUBTITLE >
 							events;				// ring of recent sound-start events
