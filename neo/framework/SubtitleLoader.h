@@ -71,6 +71,10 @@ struct idSubtitleCue {
 struct idSubtitleData {
 	idStr									speaker;
 	idList< idSubtitleCue, TAG_SUBTITLE >	cues;
+	bool									sfxCaption;	// true when EVERY cue is a
+														// parenthetical sound effect ("(screaming)")
+														// — such entries may display when idle
+														// but never preempt live dialogue
 };
 
 class idSubtitleFile {

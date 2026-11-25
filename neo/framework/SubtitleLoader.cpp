@@ -83,6 +83,47 @@ static bool SubSkipValue( idLexer &lexer ) {
 
 /*
   ====================
+  SubIsSfxCaption
+
+  True when the cue text is purely a parenthetical sound effect, e.g.
+  "(screaming)" or "(distant explosion)". Such captions describe noise,
+  not speech — they may show on their own but must not override a live
+  dialogue subtitle.
+  ====================
+  */
+static bool SubIsSfxCaption( const idStr &text ) {
+	const int len = text.Length();
+	if ( len < 2 || text[0] != '(' || text[len - 1] != ')' ) {
+		return false;
+	}
+	// reject "(hi) there" style mixed text: nothing but the outer parens
+	for ( int i = 1; i < len - 1; i++ ) {
+		if ( text[i] == '(' || text[i] == ')' ) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/*
+  ====================
+  SubFinishEntry
+
+  Derives the per-entry flags after the cues are parsed.
+  ====================
+  */
+static void SubFinishEntry( idSubtitleData &data ) {
+	data.sfxCaption = data.cues.Num() > 0;
+	for ( int i = 0; i < data.cues.Num(); i++ ) {
+		if ( !SubIsSfxCaption( data.cues[i].text ) ) {
+			data.sfxCaption = false;
+			break;
+		}
+	}
+}
+
+/*
+  ====================
   SubParseCues
 
   Parses the "cues" array into out: [{ "start": ms, "end": ms, "text": "..." }].
@@ -279,6 +320,7 @@ bool idSubtitleFile::Parse( const char *buffer, int length, const char *name ) {
 				if ( !SubParseEntry( lexer, entry.data ) ) {
 					return false;
 				}
+				SubFinishEntry( entry.data );
 				if ( entry.data.cues.Num() > 0 ) {
 					sounds.Append( entry );
 				}
@@ -294,6 +336,7 @@ bool idSubtitleFile::Parse( const char *buffer, int length, const char *name ) {
 			if ( !SubParseEntry( lexer, entry.data ) ) {
 				return false;
 			}
+			SubFinishEntry( entry.data );
 			if ( entry.data.cues.Num() > 0 ) {
 				sounds.Append( entry );
 			}
